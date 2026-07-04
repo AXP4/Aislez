@@ -26,23 +26,19 @@
 
 ## Phase 2 — Builder: Location Code System
 
-**Goal:** Every placed fixture automatically gets a unique location code. Codes update intelligently.
+**Goal:** Fixtures have location codes that the retailer can assign and manage. Codes match CSV location codes for auto-linking.
+
+> **Implementation note (July 2026):** Auto-generating codes from canvas X/Y position was de-scoped after discussion with the founder. Retailers use their own existing aisle/bay numbering schemes (e.g. Walmart Canada format), so auto-derivation from pixel position would conflict with real-world store layouts. Codes are instead **manually assigned** via the toolbar. The chain system auto-numbers chain members once a prefix is set.
 
 ### Steps
-1. Write locationCode.js utility
-   - Takes fixture's x/y position on canvas
-   - Returns a code in format `[Aisle][Bay]-[Section]`
-   - Aisle = letter derived from X zone (A, B, C...)
-   - Bay = number derived from position within aisle
-   - Section = order of placement in that bay
-2. On fixture drop → auto-assign location code
-3. Display location code as a label on the fixture rectangle
-4. On fixture move → recalculate and update location code
-5. Ensure no two fixtures share the same code (auto-increment section)
-6. Add remaining fixture types to the library (Chiller, Bunker, End Cap, Side Kick, Pallet, Rack, Table, Bin)
-7. Each fixture type renders with a distinct color so they're visually distinguishable
+1. ✅ Add location code prefix + section number inputs to the toolbar (shown when a fixture or chain is selected)
+2. ✅ Display location code as the primary label on the fixture rectangle; fall back to fixture type name when no code is set
+3. ✅ Duplicate-code detection: toolbar warns in real time if the typed code conflicts with an existing fixture/chain; suggests the next available section
+4. ✅ Chain auto-numbering: assign a prefix (e.g. `B3`) to the chain head → all members are numbered `B3-1, B3-2, …` sequentially
+5. ✅ Add remaining fixture types to the library (Chiller, Bunker, End Cap, Side Kick, Pallet, Rack, Table, Bin)
+6. ✅ Each fixture type renders with a distinct color and a 2-letter abbreviation (SH, CH, BK, EC, SK, PL, RK, TB, BN)
 
-**Test:** Place 10 fixtures of mixed types. Every one has a unique location code. Move one — code updates.
+**Test:** Place 10 fixtures of mixed types. Type a code into the toolbar — it appears on the fixture. Place two chains and assign conflicting codes — the app warns. Move a fixture — its code stays with it.
 
 ---
 
@@ -51,13 +47,15 @@
 **Goal:** Retailer can draw store walls and upload a floorplan image as a background reference.
 
 ### Steps
-1. Add wall drawing tool to toolbar (toggle between Select mode and Draw mode)
-2. In Draw mode: click to start wall, click again to end wall segment, renders as a line
-3. Connect wall segments to form a store outline
-4. Add floorplan image upload button
-5. Render uploaded image as a background layer behind fixtures (non-interactive)
-6. Image should be scaleable and repositionable
-7. Add arrow-extend feature: select a fixture row, extend arrow adds a new fixture at the end with auto-incremented code
+1. ⬜ Add wall drawing tool to toolbar (toggle between Select mode and Draw mode)
+2. ⬜ In Draw mode: click to start wall, click again to end wall segment, renders as a line
+3. ⬜ Connect wall segments to form a store outline
+4. ⬜ Add floorplan image upload button
+5. ⬜ Render uploaded image as a background layer behind fixtures (non-interactive)
+6. ⬜ Image should be scaleable and repositionable
+7. ✅ Arrow-extend: directional arrow buttons on a selected fixture extend the chain one unit; new member is auto-numbered
+
+> **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off only), Duplicate (Ctrl+D).
 
 **Test:** Upload a floorplan image, draw walls over it, place fixtures on top, extend a shelf row.
 
