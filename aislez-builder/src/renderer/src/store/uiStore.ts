@@ -39,8 +39,8 @@ interface UiStore {
   zoomIn:    () => void
   zoomOut:   () => void
   resetZoom: () => void
-  /** Scale + center the view so the entire store footprint fits on screen */
-  fitToStore: (storePixelW: number, storePixelH: number) => void
+  /** Scale + center the view so the given content bounding box (pixels) fits on screen */
+  fitToStore: (minX: number, minY: number, maxX: number, maxY: number) => void
 }
 
 function clampZoom(z: number): number {
@@ -94,18 +94,19 @@ export const useUiStore = create<UiStore>((set, get) => ({
 
   resetZoom: () => set({ zoom: 1, panX: 0, panY: 0 }),
 
-  fitToStore: (storePixelW, storePixelH) => set((s) => {
-    if (s.stageWidth <= 0 || s.stageHeight <= 0 || storePixelW <= 0 || storePixelH <= 0)
-      return s
+  fitToStore: (minX, minY, maxX, maxY) => set((s) => {
+    const w = maxX - minX
+    const h = maxY - minY
+    if (s.stageWidth <= 0 || s.stageHeight <= 0 || w <= 0 || h <= 0) return s
     const PAD = 40
     const scale = clampZoom(Math.min(
-      (s.stageWidth  - PAD * 2) / storePixelW,
-      (s.stageHeight - PAD * 2) / storePixelH
+      (s.stageWidth  - PAD * 2) / w,
+      (s.stageHeight - PAD * 2) / h
     ))
     return {
       zoom: scale,
-      panX: (s.stageWidth  - storePixelW * scale) / 2,
-      panY: (s.stageHeight - storePixelH * scale) / 2
+      panX: (s.stageWidth  - w * scale) / 2 - minX * scale,
+      panY: (s.stageHeight - h * scale) / 2 - minY * scale
     }
   })
 }))

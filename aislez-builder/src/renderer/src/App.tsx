@@ -244,7 +244,19 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
 
   const handleFit = useCallback(() => {
     if (!settings) return
-    fitToStore(settings.storeWidth * pixelsPerUnit, settings.storeHeight * pixelsPerUnit)
+    // Union the nominal store rectangle with whatever's actually been placed —
+    // an irregular, multi-sided store can extend past the declared size.
+    let minX = 0, minY = 0
+    let maxX = settings.storeWidth  * pixelsPerUnit
+    let maxY = settings.storeHeight * pixelsPerUnit
+    const { fixtures: fs, walls: ws } = useCanvasStore.getState()
+    for (const item of [...fs, ...ws]) {
+      minX = Math.min(minX, item.x * pixelsPerUnit)
+      minY = Math.min(minY, item.y * pixelsPerUnit)
+      maxX = Math.max(maxX, (item.x + item.width)  * pixelsPerUnit)
+      maxY = Math.max(maxY, (item.y + item.height) * pixelsPerUnit)
+    }
+    fitToStore(minX, minY, maxX, maxY)
   }, [settings, pixelsPerUnit, fitToStore])
 
   // ── Wall inputs ────────────────────────────────────────────────────────────
