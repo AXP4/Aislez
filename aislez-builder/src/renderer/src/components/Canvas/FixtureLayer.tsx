@@ -185,9 +185,9 @@ let _lastCtrlClick: { id: string; time: number } | null = null
 // ─── Alignment guides ────────────────────────────────────────────────────────
 
 const _guideRefs: { h: Konva.Line | null; v: Konva.Line | null } = { h: null, v: null }
-const GUIDE_THRESHOLD_PX = 8
+export const GUIDE_THRESHOLD_PX = 8
 
-function updateGuides(guideY: number | null, guideX: number | null): void {
+export function updateGuides(guideY: number | null, guideX: number | null): void {
   const { zoom } = useUiStore.getState()
   const { pixelsPerUnit: ppu } = useProjectStore.getState()
   if (_guideRefs.h) {
@@ -212,10 +212,13 @@ function updateGuides(guideY: number | null, guideX: number | null): void {
 
 interface AlignResult { x: number; y: number; guideX: number | null; guideY: number | null }
 
-function computeAlignmentSnap(
+/** Anything with a position and size can participate in alignment snapping (fixtures, walls). */
+export interface AlignBox { x: number; y: number; width: number; height: number }
+
+export function computeAlignmentSnap(
   worldX: number, worldY: number,
   w: number, h: number,
-  others: Fixture[],
+  others: AlignBox[],
   zoom: number,
   pixelsPerUnit: number
 ): AlignResult {

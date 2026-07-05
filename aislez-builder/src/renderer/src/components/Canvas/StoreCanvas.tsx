@@ -3,6 +3,7 @@ import { Stage, Layer, Rect } from 'react-konva'
 import type Konva from 'konva'
 import GridLayer from './GridLayer'
 import FixtureLayer from './FixtureLayer'
+import WallLayer from './WallLayer'
 import ArrowLayer from './ArrowLayer'
 import Ruler, { RULER_SIZE } from './Ruler'
 import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStore'
@@ -25,9 +26,9 @@ export default function StoreCanvas(): React.ReactElement {
   const didRubberBand   = useRef(false)
   const [stageSize, setStageSize] = useState<StageSize>({ width: 800, height: 600 })
 
-  const { addFixture, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor } = useCanvasStore()
+  const { addFixture, addWall, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, selectedWallId, deleteWall } = useCanvasStore()
   const { gridMode, tooltip, zoom, panX, panY, setViewport, setStageSize: setUiStageSize } = useUiStore()
-  const { settings, pixelsPerUnit, gridSizePx } = useProjectStore()
+  const { settings, pixelsPerUnit, gridSizePx, wallDefaults } = useProjectStore()
 
   // Fill available space (minus rulers), propagate to uiStore for fit-to-store
   useEffect(() => {
@@ -161,7 +162,9 @@ export default function StoreCanvas(): React.ReactElement {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const s = useCanvasStore.getState()
-        if (s.selectedFixtureId) {
+        if (s.selectedWallId) {
+          deleteWall(s.selectedWallId)
+        } else if (s.selectedFixtureId) {
           deleteFixture(s.selectedFixtureId)
         } else if (s.selectedChainAnchor) {
           const ids = getChainMembers(s.fixtures, s.selectedChainAnchor).map(f => f.id)
@@ -185,8 +188,31 @@ export default function StoreCanvas(): React.ReactElement {
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>): void => {
       e.preventDefault()
+      if (!stageRef.current || !settings) return
+
+      // Wall drop
+      if (e.dataTransfer.getData('itemType') === 'wall') {
+        const defaultW = wallDefaults.width
+        const defaultH = wallDefaults.height
+        const box = stageRef.current.container().getBoundingClientRect()
+        const contentX = (e.clientX - box.left - panX) / zoom
+        const contentY = (e.clientY - box.top  - panY) / zoom
+        const pw = defaultW * pixelsPerUnit
+        const ph = defaultH * pixelsPerUnit
+        const rawPxX = contentX - pw / 2
+        const rawPxY = contentY - ph / 2
+        const snappedPxX = gridMode === 'off' ? rawPxX : Math.round(rawPxX / gridSizePx) * gridSizePx
+        const snappedPxY = gridMode === 'off' ? rawPxY : Math.round(rawPxY / gridSizePx) * gridSizePx
+        addWall(
+          Math.round(snappedPxX / pixelsPerUnit * 100) / 100,
+          Math.round(snappedPxY / pixelsPerUnit * 100) / 100,
+          defaultW, defaultH
+        )
+        return
+      }
+
       const fixtureType = e.dataTransfer.getData('fixtureType') as FixtureType
-      if (!fixtureType || !stageRef.current || !settings) return
+      if (!fixtureType) return
 
       let width: number, height: number, label: string | undefined, customTypeId: string | undefined
 
@@ -217,7 +243,7 @@ export default function StoreCanvas(): React.ReactElement {
 
       addFixture(fixtureType, x, y, width, height, label, customTypeId)
     },
-    [addFixture, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode]
+    [addFixture, addWall, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode, wallDefaults]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
@@ -321,6 +347,7 @@ export default function StoreCanvas(): React.ReactElement {
             </Layer>
           )}
 
+          <WallLayer />
           <FixtureLayer />
           <ArrowLayer />
           {/* Rubber band selection rectangle — always mounted, hidden when inactive */}

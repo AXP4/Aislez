@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { Fixture, FixtureType, Unit } from '../types'
+import type { Fixture, FixtureType, Unit, Wall } from '../types'
+
+let _wallCounter = 0
+function generateWallId(): string {
+  return `wall_${Date.now()}_${++_wallCounter}`
+}
 import type { Direction } from '../utils/chain'
 import {
   getChainMembers, getExtendPosition, parseCode,
@@ -49,9 +54,14 @@ function generateId(): string {
 
 const MAX_HISTORY = 50
 
+interface HistoryEntry {
+  fixtures: Fixture[]
+  walls: Wall[]
+}
+
 function withHistory(state: CanvasStore): Pick<CanvasStore, 'past' | 'future'> {
   return {
-    past:   [...state.past.slice(-(MAX_HISTORY - 1)), state.fixtures],
+    past:   [...state.past.slice(-(MAX_HISTORY - 1)), { fixtures: state.fixtures, walls: state.walls }],
     future: []
   }
 }
@@ -64,8 +74,17 @@ interface CanvasStore {
   /** IDs of fixtures in an active multi-selection (rubber band or Ctrl+click) */
   multiSelectedIds:    string[]
 
-  past:   Fixture[][]
-  future: Fixture[][]
+  walls: Wall[]
+  selectedWallId: string | null
+  addWall:    (x: number, y: number, width: number, height: number) => void
+  moveWall:   (id: string, x: number, y: number) => void
+  resizeWall: (id: string, x: number, y: number, width: number, height: number) => void
+  rotateWall: (id: string) => void
+  deleteWall: (id: string) => void
+  selectWall: (id: string | null) => void
+
+  past:   HistoryEntry[]
+  future: HistoryEntry[]
   undo: () => void
   redo: () => void
 
@@ -121,17 +140,21 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   multiSelectedIds:    [],
   past:   [],
   future: [],
+  walls: [],
+  selectedWallId: null,
 
   undo: () => set((s) => {
     if (s.past.length === 0) return s
     const prev = s.past[s.past.length - 1]
     return {
-      fixtures: prev,
+      fixtures: prev.fixtures,
+      walls:    prev.walls,
       past:     s.past.slice(0, -1),
-      future:   [s.fixtures, ...s.future],
+      future:   [{ fixtures: s.fixtures, walls: s.walls }, ...s.future],
       selectedFixtureId: null,
       selectedChainAnchor: null,
-      multiSelectedIds: []
+      multiSelectedIds: [],
+      selectedWallId: null
     }
   }),
 
@@ -139,12 +162,14 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     if (s.future.length === 0) return s
     const next = s.future[0]
     return {
-      fixtures: next,
-      past:     [...s.past, s.fixtures],
+      fixtures: next.fixtures,
+      walls:    next.walls,
+      past:     [...s.past, { fixtures: s.fixtures, walls: s.walls }],
       future:   s.future.slice(1),
       selectedFixtureId: null,
       selectedChainAnchor: null,
-      multiSelectedIds: []
+      multiSelectedIds: [],
+      selectedWallId: null
     }
   }),
 
@@ -443,6 +468,26 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   }),
 
   duplicateSelected: (dx, dy) => set((s) => {
+    if (s.selectedWallId) {
+      const src = s.walls.find(w => w.id === s.selectedWallId)
+      if (!src) return s
+      const newId = generateWallId()
+      const copy: Wall = {
+        ...src,
+        id: newId,
+        x: Math.round((src.x + dx) * 100) / 100,
+        y: Math.round((src.y + dy) * 100) / 100
+      }
+      return {
+        ...withHistory(s),
+        walls: [...s.walls, copy],
+        selectedWallId: newId,
+        selectedFixtureId: null,
+        selectedChainAnchor: null,
+        multiSelectedIds: []
+      }
+    }
+
     if (s.selectedFixtureId) {
       const src = s.fixtures.find(f => f.id === s.selectedFixtureId)
       if (!src) return s
@@ -617,7 +662,36 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     multiSelectedIds:    []
   })),
 
-  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [] }),
+  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedWallId: null }),
+
+  addWall: (x, y, width, height) => set((s) => ({
+    ...withHistory(s),
+    walls: [...s.walls, { id: generateWallId(), x, y, width, height, rotation: 0 }],
+    selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: []
+  })),
+
+  moveWall: (id, x, y) => set((s) => ({
+    ...withHistory(s),
+    walls: s.walls.map(w => w.id === id ? { ...w, x, y } : w)
+  })),
+
+  resizeWall: (id, x, y, width, height) => set((s) => ({
+    ...withHistory(s),
+    walls: s.walls.map(w => w.id === id ? { ...w, x, y, width, height } : w)
+  })),
+
+  rotateWall: (id) => set((s) => ({
+    ...withHistory(s),
+    walls: s.walls.map(w => w.id === id ? { ...w, width: w.height, height: w.width } : w)
+  })),
+
+  deleteWall: (id) => set((s) => ({
+    ...withHistory(s),
+    walls: s.walls.filter(w => w.id !== id),
+    selectedWallId: s.selectedWallId === id ? null : s.selectedWallId
+  })),
+
+  selectWall: (id) => set({ selectedWallId: id, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [] }),
 
   scaleAllFixtures: (factor) => set((s) => ({
     fixtures: s.fixtures.map((f) => ({
@@ -626,6 +700,13 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       y:      Math.round(f.y      * factor * 100) / 100,
       width:  Math.round(f.width  * factor * 100) / 100,
       height: Math.round(f.height * factor * 100) / 100
+    })),
+    walls: s.walls.map((w) => ({
+      ...w,
+      x:      Math.round(w.x      * factor * 100) / 100,
+      y:      Math.round(w.y      * factor * 100) / 100,
+      width:  Math.round(w.width  * factor * 100) / 100,
+      height: Math.round(w.height * factor * 100) / 100
     })),
     past: [], future: [],
     selectedChainAnchor: null

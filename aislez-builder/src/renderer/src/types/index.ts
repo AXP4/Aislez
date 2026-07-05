@@ -56,6 +56,17 @@ export interface Fixture {
   customTypeId?: string
 }
 
+export interface Wall {
+  id: string
+  x: number
+  y: number
+  width: number   // length of the wall
+  height: number  // thickness of the wall
+  rotation: number
+}
+
+export const WALL_COLOR = '#2c3e50'
+
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 /** Standard column names products can be mapped to */

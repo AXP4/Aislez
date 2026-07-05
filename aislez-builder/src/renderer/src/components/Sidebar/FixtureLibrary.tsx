@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useProjectStore } from '../../store/projectStore'
 import { useCanvasStore } from '../../store/canvasStore'
 import type { CustomFixtureType } from '../../types'
+import { WALL_COLOR } from '../../types'
 
 // ─── Color palette ────────────────────────────────────────────────────────────
 
@@ -223,6 +224,117 @@ function FixtureItem({ customType, onEdit, onDelete }: FixtureItemProps): React.
   )
 }
 
+// ─── WallDefaultsForm ─────────────────────────────────────────────────────────
+// Wall is a fixed system type — only its default placement size is editable,
+// not its name or color (those are constant).
+
+interface WallDefaultsFormProps {
+  initial: { width: number; height: number }
+  onConfirm: (values: { width: number; height: number }) => void
+  onCancel: () => void
+}
+
+function WallDefaultsForm({ initial, onConfirm, onCancel }: WallDefaultsFormProps): React.ReactElement {
+  const { settings } = useProjectStore()
+  const unitSuffix = settings?.unit === 'feet' ? 'ft' : 'm'
+
+  const [widthStr,  setWidthStr]  = useState(String(initial.width))
+  const [heightStr, setHeightStr] = useState(String(initial.height))
+
+  const handleConfirm = (): void => {
+    const w = parseFloat(widthStr), h = parseFloat(heightStr)
+    if (isNaN(w) || w <= 0 || isNaN(h) || h <= 0) return
+    onConfirm({ width: w, height: h })
+  }
+
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 6, padding: 10, marginBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: '#7a7a9a', marginBottom: 3 }}>Length ({unitSuffix})</div>
+          <input type="number" min="0.05" step="0.1" value={widthStr}
+            onChange={(e) => setWidthStr(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onCancel() }}
+            autoFocus style={inputStyle} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: '#7a7a9a', marginBottom: 3 }}>Thickness ({unitSuffix})</div>
+          <input type="number" min="0.05" step="0.05" value={heightStr}
+            onChange={(e) => setHeightStr(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') onCancel() }}
+            style={inputStyle} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={handleConfirm} style={{
+          flex: 1, padding: '6px 0', borderRadius: 4, border: 'none', cursor: 'pointer',
+          background: WALL_COLOR, color: '#fff', fontSize: 12, fontWeight: 600
+        }}>
+          Save
+        </button>
+        <button onClick={onCancel} style={{
+          flex: 1, padding: '6px 0', borderRadius: 4,
+          border: '1px solid #3a3a5a', background: 'transparent',
+          color: '#aaa', fontSize: 12, cursor: 'pointer'
+        }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── WallItem ─────────────────────────────────────────────────────────────────
+
+function WallItem(): React.ReactElement {
+  const { formatUnitShort, wallDefaults, updateWallDefaults } = useProjectStore()
+  const [hovered, setHovered] = useState(false)
+  const [editing, setEditing] = useState(false)
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.dataTransfer.setData('itemType', 'wall')
+    e.dataTransfer.effectAllowed = 'copy'
+    const canvas = makeDragPreview('Wall', WALL_COLOR, 80, 16)
+    e.dataTransfer.setDragImage(canvas, 40, 8)
+    setTimeout(() => canvas.remove(), 0)
+  }
+
+  if (editing) {
+    return (
+      <WallDefaultsForm
+        initial={wallDefaults}
+        onConfirm={(values) => { updateWallDefaults(values); setEditing(false) }}
+        onCancel={() => setEditing(false)}
+      />
+    )
+  }
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ ...itemBase, background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)' }}
+    >
+      <div style={{ width: 24, height: 8, borderRadius: 2, background: WALL_COLOR, flexShrink: 0 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, color: '#dde0e8' }}>Wall</span>
+        <span style={{ fontSize: 10, color: '#555570' }}>
+          {formatUnitShort(wallDefaults.width)} × {formatUnitShort(wallDefaults.height)}
+        </span>
+      </div>
+      {hovered && (
+        <div style={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+          <button onClick={(e) => { e.stopPropagation(); setEditing(true) }}
+            title="Edit default size" style={{ ...iconBtn, fontSize: 13 }}>✎</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── FixtureLibrary ───────────────────────────────────────────────────────────
 
 export default function FixtureLibrary(): React.ReactElement {
@@ -246,6 +358,12 @@ export default function FixtureLibrary(): React.ReactElement {
 
   return (
     <div style={{ padding: 12 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a', marginBottom: 8 }}>
+        Walls
+      </div>
+      <WallItem />
+      <div style={{ height: 1, background: '#2a2a44', margin: '12px 0 10px' }} />
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a' }}>
           Fixtures

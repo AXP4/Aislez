@@ -7,6 +7,7 @@ import { useUiStore } from './store/uiStore'
 import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
 import { getChainMembers, parseCode } from './utils/chain'
+import { WALL_COLOR } from './types'
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,8 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
     deleteFixture, rotateFixture, past, future, undo, redo,
     fixtures, moveFixture, moveChain, setFixtureCode,
-    deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti
+    deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti,
+    walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall
   } = useCanvasStore()
   const { settings, formatUnitShort, pixelsPerUnit } = useProjectStore()
 
@@ -244,6 +246,49 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     if (!settings) return
     fitToStore(settings.storeWidth * pixelsPerUnit, settings.storeHeight * pixelsPerUnit)
   }, [settings, pixelsPerUnit, fitToStore])
+
+  // ── Wall inputs ────────────────────────────────────────────────────────────
+  const selectedWall = walls.find(w => w.id === selectedWallId) ?? null
+  const [wallX, setWallX] = useState('')
+  const [wallY, setWallY] = useState('')
+  const [wallW, setWallW] = useState('')
+  const [wallH, setWallH] = useState('')
+
+  useEffect(() => {
+    if (selectedWall) {
+      setWallX(String(parseFloat(selectedWall.x.toFixed(2))))
+      setWallY(String(parseFloat(selectedWall.y.toFixed(2))))
+      setWallW(String(parseFloat(selectedWall.width.toFixed(2))))
+      setWallH(String(parseFloat(selectedWall.height.toFixed(2))))
+    } else {
+      setWallX(''); setWallY(''); setWallW(''); setWallH('')
+    }
+  }, [selectedWallId, selectedWall?.x, selectedWall?.y, selectedWall?.width, selectedWall?.height])
+
+  const commitWallX = (): void => {
+    if (!selectedWall) return
+    const v = parseFloat(wallX)
+    if (isNaN(v)) { setWallX(String(parseFloat(selectedWall.x.toFixed(2)))); return }
+    moveWall(selectedWall.id, v, selectedWall.y)
+  }
+  const commitWallY = (): void => {
+    if (!selectedWall) return
+    const v = parseFloat(wallY)
+    if (isNaN(v)) { setWallY(String(parseFloat(selectedWall.y.toFixed(2)))); return }
+    moveWall(selectedWall.id, selectedWall.x, v)
+  }
+  const commitWallW = (): void => {
+    if (!selectedWall) return
+    const v = parseFloat(wallW)
+    if (isNaN(v) || v <= 0) { setWallW(String(parseFloat(selectedWall.width.toFixed(2)))); return }
+    resizeWall(selectedWall.id, selectedWall.x, selectedWall.y, v, selectedWall.height)
+  }
+  const commitWallH = (): void => {
+    if (!selectedWall) return
+    const v = parseFloat(wallH)
+    if (isNaN(v) || v <= 0) { setWallH(String(parseFloat(selectedWall.height.toFixed(2)))); return }
+    resizeWall(selectedWall.id, selectedWall.x, selectedWall.y, selectedWall.width, v)
+  }
 
   const zoomPct = `${Math.round(zoom * 100)}%`
 
@@ -472,6 +517,79 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
               Delete {multiSelectedIds.length}
             </button>
           </>
+        )}
+        {/* ── Wall parameters ── only when a wall is selected ── */}
+        {selectedWallId && selectedWall && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            borderLeft: `2px solid ${WALL_COLOR}`,
+            background: 'rgba(44,62,80,0.18)',
+            borderRadius: '0 4px 4px 0',
+            paddingLeft: 10, paddingRight: 6,
+            marginLeft: 2, height: 28
+          }}>
+            <span style={{ fontSize: 10, color: '#7a95a8', fontWeight: 600, letterSpacing: '0.04em' }}>WALL</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#7a95a8' }}>X</span>
+            <input
+              type="number" step={gridSnap} value={wallX}
+              onChange={e => setWallX(e.target.value)}
+              onBlur={commitWallX}
+              onKeyDown={e => { if (e.key === 'Enter') commitWallX() }}
+              title={`X position (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 11, color: '#7a95a8', marginLeft: 2 }}>Y</span>
+            <input
+              type="number" step={gridSnap} value={wallY}
+              onChange={e => setWallY(e.target.value)}
+              onBlur={commitWallY}
+              onKeyDown={e => { if (e.key === 'Enter') commitWallY() }}
+              title={`Y position (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 10, color: '#7a95a8' }}>{unitLabel}</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#7a95a8' }}>L</span>
+            <input
+              type="number" step={gridSnap} min={0.01} value={wallW}
+              onChange={e => setWallW(e.target.value)}
+              onBlur={commitWallW}
+              onKeyDown={e => { if (e.key === 'Enter') commitWallW() }}
+              title={`Length (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 11, color: '#7a95a8' }}>T</span>
+            <input
+              type="number" step={gridSnap} min={0.01} value={wallH}
+              onChange={e => setWallH(e.target.value)}
+              onBlur={commitWallH}
+              onKeyDown={e => { if (e.key === 'Enter') commitWallH() }}
+              title={`Thickness (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 10, color: '#7a95a8' }}>{unitLabel}</span>
+            {SEP}
+            <button onClick={() => duplicateSelected(gridSnap, gridSnap)} title="Duplicate (Ctrl+D)"
+              style={{ ...BTN, gap: 5, borderColor: WALL_COLOR + 'bb', color: '#7a95a8' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Duplicate
+            </button>
+            <button onClick={() => rotateWall(selectedWallId)} title="Rotate 90° (swap length and thickness)"
+              style={{ ...BTN, gap: 5, borderColor: WALL_COLOR + 'bb', color: '#7a95a8' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Rotate
+            </button>
+            <button onClick={() => deleteWall(selectedWallId)} style={BTN_DANGER}>
+              Delete
+            </button>
+          </div>
         )}
       </div>
 

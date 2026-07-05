@@ -26,6 +26,17 @@ function makeBuiltinTypes(unit: Unit): CustomFixtureType[] {
   }))
 }
 
+export interface WallDefaults {
+  /** Length of a newly placed wall */
+  width: number
+  /** Thickness of a newly placed wall */
+  height: number
+}
+
+function makeWallDefaults(unit: Unit): WallDefaults {
+  return unit === 'feet' ? { width: 10, height: 0.75 } : { width: 3, height: 0.2 }
+}
+
 /** How many canvas pixels represent one real-world unit */
 export const PIXELS_PER_UNIT: Record<Unit, number> = {
   meters: 60,
@@ -52,6 +63,8 @@ interface ProjectStore {
   /** Snap grid size in pixels (= settings.gridSnap × pixelsPerUnit) */
   gridSizePx: number
   customFixtureTypes: CustomFixtureType[]
+  /** Default length/thickness used when a new wall is dropped onto the canvas */
+  wallDefaults: WallDefaults
   initProject: (settings: ProjectSettings) => void
   /** Update mutable project settings after creation (unit is immutable) */
   updateSettings: (updates: SettingsUpdate) => void
@@ -62,6 +75,7 @@ interface ProjectStore {
   addCustomFixtureType: (type: Omit<CustomFixtureType, 'id'>) => void
   updateCustomFixtureType: (id: string, updates: Omit<CustomFixtureType, 'id'>) => void
   deleteCustomFixtureType: (id: string) => void
+  updateWallDefaults: (updates: Partial<WallDefaults>) => void
 }
 
 function derive(settings: ProjectSettings): { pixelsPerUnit: number; gridSizePx: number } {
@@ -74,9 +88,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   pixelsPerUnit: PIXELS_PER_UNIT.meters,
   gridSizePx: DEFAULT_GRID_SNAP * PIXELS_PER_UNIT.meters,
   customFixtureTypes: [],
+  wallDefaults: makeWallDefaults('meters'),
 
   initProject: (settings) => {
-    set({ settings, ...derive(settings), customFixtureTypes: makeBuiltinTypes(settings.unit) })
+    set({
+      settings, ...derive(settings),
+      customFixtureTypes: makeBuiltinTypes(settings.unit),
+      wallDefaults: makeWallDefaults(settings.unit)
+    })
   },
 
   updateSettings: (updates) => {
@@ -108,5 +127,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   deleteCustomFixtureType: (id) => set((s) => ({
     customFixtureTypes: s.customFixtureTypes.filter(t => t.id !== id)
+  })),
+
+  updateWallDefaults: (updates) => set((s) => ({
+    wallDefaults: { ...s.wallDefaults, ...updates }
   }))
 }))
