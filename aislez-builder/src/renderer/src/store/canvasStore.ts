@@ -20,7 +20,8 @@ const DEFAULTS_M: Record<FixtureType, FixtureDefaults> = {
   pallet:   { width: 1.0, height: 1.2 },
   rack:     { width: 0.6, height: 0.4 },
   table:    { width: 1.2, height: 0.6 },
-  bin:      { width: 0.6, height: 0.6 }
+  bin:      { width: 0.6, height: 0.6 },
+  custom:   { width: 1.0, height: 1.0 }
 }
 
 const DEFAULTS_FT: Record<FixtureType, FixtureDefaults> = {
@@ -32,7 +33,8 @@ const DEFAULTS_FT: Record<FixtureType, FixtureDefaults> = {
   pallet:   { width: 3.5, height: 4.0 },
   rack:     { width: 2.0, height: 1.5 },
   table:    { width: 4.0, height: 2.0 },
-  bin:      { width: 2.0, height: 2.0 }
+  bin:      { width: 2.0, height: 2.0 },
+  custom:   { width: 3.0, height: 3.0 }
 }
 
 export const FIXTURE_DEFAULTS_BY_UNIT: Record<Unit, Record<FixtureType, FixtureDefaults>> = {
@@ -67,7 +69,7 @@ interface CanvasStore {
   undo: () => void
   redo: () => void
 
-  addFixture:     (type: FixtureType, x: number, y: number, width: number, height: number) => void
+  addFixture:     (type: FixtureType, x: number, y: number, width: number, height: number, label?: string, customTypeId?: string) => void
   moveFixture:    (id: string, x: number, y: number) => void
   /** Move all fixtures in `ids` by the same delta — used for chain-group drag */
   moveChain:      (ids: string[], dx: number, dy: number) => void
@@ -146,12 +148,12 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     }
   }),
 
-  // Fixtures drop unlabeled with no chain links
-  addFixture: (type, x, y, width, height) => set((s) => ({
+  addFixture: (type, x, y, width, height, label, customTypeId) => set((s) => ({
     ...withHistory(s),
     fixtures: [...s.fixtures, {
       id: generateId(), type, x, y, width, height, rotation: 0,
-      label: type.charAt(0).toUpperCase() + type.slice(1)
+      label: label ?? (type.charAt(0).toUpperCase() + type.slice(1)),
+      ...(customTypeId ? { customTypeId } : {})
     }]
   })),
 
@@ -332,7 +334,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       label: from.label,
       locationCode: newCode,
       prevId: fromId,
-      nextId: nextNeighbor?.id
+      nextId: nextNeighbor?.id,
+      ...(from.customTypeId ? { customTypeId: from.customTypeId } : {})
     }
 
     const fixtures = [

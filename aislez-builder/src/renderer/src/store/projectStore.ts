@@ -1,5 +1,30 @@
 import { create } from 'zustand'
-import type { Unit, ProjectSettings } from '../types'
+import type { Unit, ProjectSettings, CustomFixtureType } from '../types'
+
+let _cftCounter = 0
+
+const BUILTIN_DEFS = [
+  { name: 'Shelf',     widthM: 1.2, heightM: 0.5, widthFt: 4.0, heightFt: 1.5, color: '#4A90D9', abbrev: 'SH' },
+  { name: 'Chiller',   widthM: 1.0, heightM: 0.8, widthFt: 3.5, heightFt: 2.5, color: '#2ECC71', abbrev: 'CH' },
+  { name: 'Bunker',    widthM: 1.2, heightM: 1.0, widthFt: 4.0, heightFt: 3.5, color: '#1ABC9C', abbrev: 'BK' },
+  { name: 'End Cap',   widthM: 0.6, heightM: 1.0, widthFt: 2.0, heightFt: 3.5, color: '#E67E22', abbrev: 'EC' },
+  { name: 'Side Kick', widthM: 0.3, heightM: 0.6, widthFt: 1.0, heightFt: 2.0, color: '#F39C12', abbrev: 'SK' },
+  { name: 'Pallet',    widthM: 1.0, heightM: 1.2, widthFt: 3.5, heightFt: 4.0, color: '#8E44AD', abbrev: 'PL' },
+  { name: 'Rack',      widthM: 0.6, heightM: 0.4, widthFt: 2.0, heightFt: 1.5, color: '#E74C3C', abbrev: 'RK' },
+  { name: 'Table',     widthM: 1.2, heightM: 0.6, widthFt: 4.0, heightFt: 2.0, color: '#16A085', abbrev: 'TB' },
+  { name: 'Bin',       widthM: 0.6, heightM: 0.6, widthFt: 2.0, heightFt: 2.0, color: '#D35400', abbrev: 'BN' },
+]
+
+function makeBuiltinTypes(unit: Unit): CustomFixtureType[] {
+  return BUILTIN_DEFS.map((d, i) => ({
+    id: `builtin_${i}`,
+    name: d.name,
+    width:  unit === 'feet' ? d.widthFt  : d.widthM,
+    height: unit === 'feet' ? d.heightFt : d.heightM,
+    color:  d.color,
+    abbrev: d.abbrev
+  }))
+}
 
 /** How many canvas pixels represent one real-world unit */
 export const PIXELS_PER_UNIT: Record<Unit, number> = {
@@ -26,6 +51,7 @@ interface ProjectStore {
   pixelsPerUnit: number
   /** Snap grid size in pixels (= settings.gridSnap × pixelsPerUnit) */
   gridSizePx: number
+  customFixtureTypes: CustomFixtureType[]
   initProject: (settings: ProjectSettings) => void
   /** Update mutable project settings after creation (unit is immutable) */
   updateSettings: (updates: SettingsUpdate) => void
@@ -33,6 +59,9 @@ interface ProjectStore {
   formatUnit: (value: number) => string
   /** Compact form: "1.2m" or "4.0'" */
   formatUnitShort: (value: number) => string
+  addCustomFixtureType: (type: Omit<CustomFixtureType, 'id'>) => void
+  updateCustomFixtureType: (id: string, updates: Omit<CustomFixtureType, 'id'>) => void
+  deleteCustomFixtureType: (id: string) => void
 }
 
 function derive(settings: ProjectSettings): { pixelsPerUnit: number; gridSizePx: number } {
@@ -44,9 +73,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   settings: null,
   pixelsPerUnit: PIXELS_PER_UNIT.meters,
   gridSizePx: DEFAULT_GRID_SNAP * PIXELS_PER_UNIT.meters,
+  customFixtureTypes: [],
 
   initProject: (settings) => {
-    set({ settings, ...derive(settings) })
+    set({ settings, ...derive(settings), customFixtureTypes: makeBuiltinTypes(settings.unit) })
   },
 
   updateSettings: (updates) => {
@@ -66,5 +96,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   formatUnitShort: (value) => {
     const { settings } = get()
     return settings?.unit === 'feet' ? `${value.toFixed(1)}'` : `${value.toFixed(1)}m`
-  }
+  },
+
+  addCustomFixtureType: (type) => set((s) => ({
+    customFixtureTypes: [...s.customFixtureTypes, { ...type, id: `cft_${Date.now()}_${++_cftCounter}` }]
+  })),
+
+  updateCustomFixtureType: (id, updates) => set((s) => ({
+    customFixtureTypes: s.customFixtureTypes.map(t => t.id === id ? { ...t, ...updates } : t)
+  })),
+
+  deleteCustomFixtureType: (id) => set((s) => ({
+    customFixtureTypes: s.customFixtureTypes.filter(t => t.id !== id)
+  }))
 }))

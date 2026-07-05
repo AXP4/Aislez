@@ -188,18 +188,26 @@ export default function StoreCanvas(): React.ReactElement {
       const fixtureType = e.dataTransfer.getData('fixtureType') as FixtureType
       if (!fixtureType || !stageRef.current || !settings) return
 
-      const defaults = FIXTURE_DEFAULTS_BY_UNIT[settings.unit][fixtureType]
-      const box = stageRef.current.container().getBoundingClientRect()
+      let width: number, height: number, label: string | undefined, customTypeId: string | undefined
 
-      // Convert screen → stage content coordinates (accounts for zoom/pan)
+      if (fixtureType === 'custom') {
+        const ctId = e.dataTransfer.getData('customTypeId')
+        const ct = useProjectStore.getState().customFixtureTypes.find(t => t.id === ctId)
+        if (!ct) return
+        width = ct.width; height = ct.height; label = ct.name; customTypeId = ctId
+      } else {
+        const defaults = FIXTURE_DEFAULTS_BY_UNIT[settings.unit][fixtureType]
+        width = defaults.width; height = defaults.height
+      }
+
+      const box = stageRef.current.container().getBoundingClientRect()
       const screenX = e.clientX - box.left
       const screenY = e.clientY - box.top
       const contentX = (screenX - panX) / zoom
       const contentY = (screenY - panY) / zoom
 
-      const pw = defaults.width  * pixelsPerUnit
-      const ph = defaults.height * pixelsPerUnit
-
+      const pw = width  * pixelsPerUnit
+      const ph = height * pixelsPerUnit
       const rawPxX = contentX - pw / 2
       const rawPxY = contentY - ph / 2
       const snappedPxX = gridMode === 'off' ? rawPxX : Math.round(rawPxX / gridSizePx) * gridSizePx
@@ -207,7 +215,7 @@ export default function StoreCanvas(): React.ReactElement {
       const x = Math.round(snappedPxX / pixelsPerUnit * 100) / 100
       const y = Math.round(snappedPxY / pixelsPerUnit * 100) / 100
 
-      addFixture(fixtureType, x, y, defaults.width, defaults.height)
+      addFixture(fixtureType, x, y, width, height, label, customTypeId)
     },
     [addFixture, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode]
   )

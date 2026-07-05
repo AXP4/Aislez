@@ -25,6 +25,16 @@ export type FixtureType =
   | 'rack'
   | 'table'
   | 'bin'
+  | 'custom'
+
+export interface CustomFixtureType {
+  id: string
+  name: string
+  width: number
+  height: number
+  color: string
+  abbrev: string
+}
 
 export interface Fixture {
   id: string
@@ -42,6 +52,8 @@ export interface Fixture {
   prevId?: string
   /** Chain doubly-linked list: ID of the fixture after this one */
   nextId?: string
+  /** Set when type === 'custom'; references a CustomFixtureType in projectStore */
+  customTypeId?: string
 }
 
 // ─── Product ─────────────────────────────────────────────────────────────────

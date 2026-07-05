@@ -10,7 +10,7 @@ import {
   ARROW_GAP_PX, ARROW_RADIUS_PX, ARROW_HIT_PAD, ARROW_COLOR, ARROW_OPACITY
 } from './ArrowLayer'
 import type { Direction } from '../../utils/chain'
-import type { Fixture, FixtureType } from '../../types'
+import type { Fixture, FixtureType, CustomFixtureType } from '../../types'
 
 export const FIXTURE_COLORS: Record<FixtureType, string> = {
   shelf:    '#4A90D9',
@@ -21,7 +21,8 @@ export const FIXTURE_COLORS: Record<FixtureType, string> = {
   pallet:   '#8E44AD',
   rack:     '#E74C3C',
   table:    '#16A085',
-  bin:      '#D35400'
+  bin:      '#D35400',
+  custom:   '#888899'
 }
 
 const FIXTURE_SNAP_WORLD_UNITS = 0.25  // world-space tolerance; scales with zoom so gap fill works at any zoom level
@@ -42,7 +43,22 @@ const FIXTURE_ABBREV: Record<FixtureType, string> = {
   pallet:   'PL',
   rack:     'RK',
   table:    'TB',
-  bin:      'BN'
+  bin:      'BN',
+  custom:   'CU'
+}
+
+function resolveFixtureColor(fixture: Fixture, customTypes: CustomFixtureType[]): string {
+  if (fixture.type === 'custom' && fixture.customTypeId) {
+    return customTypes.find(t => t.id === fixture.customTypeId)?.color ?? FIXTURE_COLORS.custom
+  }
+  return FIXTURE_COLORS[fixture.type]
+}
+
+function resolveFixtureAbbrev(fixture: Fixture, customTypes: CustomFixtureType[]): string {
+  if (fixture.type === 'custom' && fixture.customTypeId) {
+    return customTypes.find(t => t.id === fixture.customTypeId)?.abbrev ?? FIXTURE_ABBREV.custom
+  }
+  return FIXTURE_ABBREV[fixture.type]
 }
 
 interface LabelFit { fontSize: number; wrap: 'word' | 'none' }
@@ -346,12 +362,12 @@ function FixtureShape({
   fixture, isSelected, isChainSelected, isDuplicate, isMultiSelected, ownDraggable = true
 }: FixtureShapeProps): React.ReactElement {
   const { moveFixture, detachAndMove, selectFixture, selectChain, extendChain, rejoinChain, rejoinBoth, toggleMultiSelect, addToMultiSelected, moveMulti } = useCanvasStore()
-  const { pixelsPerUnit, gridSizePx, formatUnitShort } = useProjectStore()
+  const { pixelsPerUnit, gridSizePx, formatUnitShort, customFixtureTypes } = useProjectStore()
   const { gridMode, ctrlHeld, showTooltip, hideTooltip } = useUiStore()
 
   const isHighlighted = isSelected || isChainSelected
 
-  const fill = FIXTURE_COLORS[fixture.type]
+  const fill = resolveFixtureColor(fixture, customFixtureTypes)
   const px = fixture.x * pixelsPerUnit
   const py = fixture.y * pixelsPerUnit
   const pw = fixture.width  * pixelsPerUnit
@@ -359,7 +375,7 @@ function FixtureShape({
 
   const displayText = fixture.locationCode ?? fixture.label
   const { text: labelText, fontSize, wrap, visible: labelVisible, needsTooltip } =
-    resolveLabel(displayText, FIXTURE_ABBREV[fixture.type], pw, ph, !!fixture.locationCode)
+    resolveLabel(displayText, resolveFixtureAbbrev(fixture, customFixtureTypes), pw, ph, !!fixture.locationCode)
 
   const tooltipText = [
     fixture.label,
