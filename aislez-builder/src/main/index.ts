@@ -91,15 +91,22 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  // ESC exits fullscreen without consuming the key event for the renderer
+  const isDev = !!process.env['ELECTRON_RENDERER_URL']
+
+  // ESC exits fullscreen without consuming the key event for the renderer.
+  // Ctrl/Cmd+R reloads the renderer — dev-only, so a retailer can never
+  // accidentally wipe an in-progress project (no save/load exists yet).
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.type === 'keyDown' && input.key === 'Escape' && mainWindow?.isFullScreen()) {
       mainWindow.setFullScreen(false)
     }
+    if (isDev && input.type === 'keyDown' && input.key.toLowerCase() === 'r' && (input.control || input.meta)) {
+      mainWindow?.reload()
+    }
   })
 
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  if (isDev) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']!)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
