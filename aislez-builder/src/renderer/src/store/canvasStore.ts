@@ -1,9 +1,23 @@
 import { create } from 'zustand'
-import type { Fixture, FixtureType, Unit, Wall } from '../types'
+import type { Entrance, Fixture, FixtureType, Unit, Wall } from '../types'
 
 let _wallCounter = 0
 function generateWallId(): string {
   return `wall_${Date.now()}_${++_wallCounter}`
+}
+
+let _entranceCounter = 0
+function generateEntranceId(): string {
+  return `entrance_${Date.now()}_${++_entranceCounter}`
+}
+
+/** Length of storeOutline's edge at `edgeIndex`, or null if the outline/index isn't valid */
+function getEdgeLength(edgeIndex: number): number | null {
+  const outline = useProjectStore.getState().settings?.storeOutline
+  if (!outline || edgeIndex < 0 || edgeIndex >= outline.length) return null
+  const p1 = outline[edgeIndex]
+  const p2 = outline[(edgeIndex + 1) % outline.length]
+  return Math.hypot(p2.x - p1.x, p2.y - p1.y)
 }
 import type { Direction } from '../utils/chain'
 import {
@@ -59,11 +73,12 @@ const MAX_HISTORY = 50
 interface HistoryEntry {
   fixtures: Fixture[]
   walls: Wall[]
+  entrances: Entrance[]
 }
 
 function withHistory(state: CanvasStore): Pick<CanvasStore, 'past' | 'future'> {
   return {
-    past:   [...state.past.slice(-(MAX_HISTORY - 1)), { fixtures: state.fixtures, walls: state.walls }],
+    past:   [...state.past.slice(-(MAX_HISTORY - 1)), { fixtures: state.fixtures, walls: state.walls, entrances: state.entrances }],
     future: []
   }
 }
@@ -84,6 +99,21 @@ interface CanvasStore {
   rotateWall: (id: string) => void
   deleteWall: (id: string) => void
   selectWall: (id: string | null) => void
+
+  entrances: Entrance[]
+  selectedEntranceId: string | null
+  /** Place an entrance on outline edge `edgeIndex`, clamped to fit within that edge's length */
+  addEntrance:    (edgeIndex: number, offset: number, width: number) => void
+  /** Slide an entrance along its host edge (width unchanged) */
+  moveEntrance:   (id: string, offset: number) => void
+  /** Adjust an entrance's offset and width together — used when dragging an end handle */
+  resizeEntrance: (id: string, offset: number, width: number) => void
+  deleteEntrance: (id: string) => void
+  selectEntrance: (id: string | null) => void
+
+  /** Index of the storeOutline edge whose perimeter thickness handle is showing, if any */
+  selectedPerimeterEdge: number | null
+  selectPerimeterEdge: (edgeIndex: number | null) => void
 
   past:   HistoryEntry[]
   future: HistoryEntry[]
@@ -144,6 +174,9 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   future: [],
   walls: [],
   selectedWallId: null,
+  entrances: [],
+  selectedEntranceId: null,
+  selectedPerimeterEdge: null,
 
   undo: () => set((s) => {
     if (s.past.length === 0) return s
@@ -151,12 +184,15 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     return {
       fixtures: prev.fixtures,
       walls:    prev.walls,
+      entrances: prev.entrances,
       past:     s.past.slice(0, -1),
-      future:   [{ fixtures: s.fixtures, walls: s.walls }, ...s.future],
+      future:   [{ fixtures: s.fixtures, walls: s.walls, entrances: s.entrances }, ...s.future],
       selectedFixtureId: null,
       selectedChainAnchor: null,
       multiSelectedIds: [],
-      selectedWallId: null
+      selectedWallId: null,
+      selectedEntranceId: null,
+      selectedPerimeterEdge: null
     }
   }),
 
@@ -166,12 +202,15 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     return {
       fixtures: next.fixtures,
       walls:    next.walls,
-      past:     [...s.past, { fixtures: s.fixtures, walls: s.walls }],
+      entrances: next.entrances,
+      past:     [...s.past, { fixtures: s.fixtures, walls: s.walls, entrances: s.entrances }],
       future:   s.future.slice(1),
       selectedFixtureId: null,
       selectedChainAnchor: null,
       multiSelectedIds: [],
-      selectedWallId: null
+      selectedWallId: null,
+      selectedEntranceId: null,
+      selectedPerimeterEdge: null
     }
   }),
 
@@ -662,20 +701,21 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     }
   }),
 
-  selectFixture: (id) => set({ selectedFixtureId: id, selectedChainAnchor: null, multiSelectedIds: [] }),
+  selectFixture: (id) => set({ selectedFixtureId: id, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null }),
 
   selectChain: (id) => set((s) => ({
     selectedFixtureId:   null,
     selectedChainAnchor: findChainAnchorId(s.fixtures, id),
-    multiSelectedIds:    []
+    multiSelectedIds:    [],
+    selectedPerimeterEdge: null
   })),
 
-  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedWallId: null }),
+  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedWallId: null, selectedEntranceId: null, selectedPerimeterEdge: null }),
 
   addWall: (x, y, width, height) => set((s) => ({
     ...withHistory(s),
     walls: [...s.walls, { id: generateWallId(), x, y, width, height, rotation: 0 }],
-    selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: []
+    selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null
   })),
 
   moveWall: (id, x, y) => set((s) => ({
@@ -699,7 +739,63 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     selectedWallId: s.selectedWallId === id ? null : s.selectedWallId
   })),
 
-  selectWall: (id) => set({ selectedWallId: id, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [] }),
+  selectWall: (id) => set({ selectedWallId: id, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null }),
+
+  addEntrance: (edgeIndex, offset, width) => set((s) => {
+    const length = getEdgeLength(edgeIndex)
+    if (length === null) return s
+    const clampedWidth = Math.min(width, length)
+    const clampedOffset = Math.min(Math.max(offset, 0), length - clampedWidth)
+    return {
+      ...withHistory(s),
+      entrances: [...s.entrances, {
+        id: generateEntranceId(), edgeIndex,
+        offset: Math.round(clampedOffset * 100) / 100,
+        width:  Math.round(clampedWidth * 100) / 100
+      }],
+      selectedEntranceId: null, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null
+    }
+  }),
+
+  moveEntrance: (id, offset) => set((s) => {
+    const entrance = s.entrances.find(e => e.id === id)
+    if (!entrance) return s
+    const length = getEdgeLength(entrance.edgeIndex)
+    if (length === null) return s
+    const clampedOffset = Math.min(Math.max(offset, 0), length - entrance.width)
+    return {
+      ...withHistory(s),
+      entrances: s.entrances.map(e => e.id === id ? { ...e, offset: Math.round(clampedOffset * 100) / 100 } : e)
+    }
+  }),
+
+  resizeEntrance: (id, offset, width) => set((s) => {
+    const entrance = s.entrances.find(e => e.id === id)
+    if (!entrance) return s
+    const length = getEdgeLength(entrance.edgeIndex)
+    if (length === null) return s
+    const clampedOffset = Math.min(Math.max(offset, 0), length)
+    const clampedWidth = Math.min(Math.max(width, 0.05), length - clampedOffset)
+    return {
+      ...withHistory(s),
+      entrances: s.entrances.map(e => e.id === id
+        ? { ...e, offset: Math.round(clampedOffset * 100) / 100, width: Math.round(clampedWidth * 100) / 100 }
+        : e)
+    }
+  }),
+
+  deleteEntrance: (id) => set((s) => ({
+    ...withHistory(s),
+    entrances: s.entrances.filter(e => e.id !== id),
+    selectedEntranceId: s.selectedEntranceId === id ? null : s.selectedEntranceId
+  })),
+
+  selectEntrance: (id) => set({ selectedEntranceId: id, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null }),
+
+  selectPerimeterEdge: (edgeIndex) => set({
+    selectedPerimeterEdge: edgeIndex,
+    selectedWallId: null, selectedEntranceId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: []
+  }),
 
   scaleAllFixtures: (factor) => set((s) => ({
     fixtures: s.fixtures.map((f) => ({
@@ -715,6 +811,11 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       y:      Math.round(w.y      * factor * 100) / 100,
       width:  Math.round(w.width  * factor * 100) / 100,
       height: Math.round(w.height * factor * 100) / 100
+    })),
+    entrances: s.entrances.map((e) => ({
+      ...e,
+      offset: Math.round(e.offset * factor * 100) / 100,
+      width:  Math.round(e.width  * factor * 100) / 100
     })),
     past: [], future: [],
     selectedChainAnchor: null

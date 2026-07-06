@@ -50,7 +50,8 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     deleteFixture, rotateFixture, past, future, undo, redo,
     fixtures, moveFixture, moveChain, setFixtureCode,
     deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti,
-    walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall
+    walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall,
+    entrances, selectedEntranceId, deleteEntrance, moveEntrance, resizeEntrance
   } = useCanvasStore()
   const { settings, formatUnitShort, pixelsPerUnit } = useProjectStore()
 
@@ -300,6 +301,33 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     const v = parseFloat(wallH)
     if (isNaN(v) || v <= 0) { setWallH(String(parseFloat(selectedWall.height.toFixed(2)))); return }
     resizeWall(selectedWall.id, selectedWall.x, selectedWall.y, selectedWall.width, v)
+  }
+
+  // ── Entrance inputs ────────────────────────────────────────────────────────
+  const selectedEntrance = entrances.find(e => e.id === selectedEntranceId) ?? null
+  const [entranceOffset, setEntranceOffset] = useState('')
+  const [entranceWidth,  setEntranceWidth]  = useState('')
+
+  useEffect(() => {
+    if (selectedEntrance) {
+      setEntranceOffset(String(parseFloat(selectedEntrance.offset.toFixed(2))))
+      setEntranceWidth(String(parseFloat(selectedEntrance.width.toFixed(2))))
+    } else {
+      setEntranceOffset(''); setEntranceWidth('')
+    }
+  }, [selectedEntranceId, selectedEntrance?.offset, selectedEntrance?.width])
+
+  const commitEntranceOffset = (): void => {
+    if (!selectedEntrance) return
+    const v = parseFloat(entranceOffset)
+    if (isNaN(v)) { setEntranceOffset(String(parseFloat(selectedEntrance.offset.toFixed(2)))); return }
+    moveEntrance(selectedEntrance.id, v)
+  }
+  const commitEntranceWidth = (): void => {
+    if (!selectedEntrance) return
+    const v = parseFloat(entranceWidth)
+    if (isNaN(v) || v <= 0) { setEntranceWidth(String(parseFloat(selectedEntrance.width.toFixed(2)))); return }
+    resizeEntrance(selectedEntrance.id, selectedEntrance.offset, v)
   }
 
   const zoomPct = `${Math.round(zoom * 100)}%`
@@ -599,6 +627,45 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
               Rotate
             </button>
             <button onClick={() => deleteWall(selectedWallId)} style={BTN_DANGER}>
+              Delete
+            </button>
+          </div>
+        )}
+        {/* ── Entrance parameters ── only when an entrance is selected ── */}
+        {selectedEntranceId && selectedEntrance && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            borderLeft: '2px solid #4A90D9',
+            background: 'rgba(74,144,217,0.12)',
+            borderRadius: '0 4px 4px 0',
+            paddingLeft: 10, paddingRight: 6,
+            marginLeft: 2, height: 28
+          }}>
+            <span style={{ fontSize: 10, color: '#7aa8d9', fontWeight: 600, letterSpacing: '0.04em' }}>ENTRANCE</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#7aa8d9' }}>Pos</span>
+            <input
+              type="number" step={gridSnap} min={0} value={entranceOffset}
+              onChange={e => setEntranceOffset(e.target.value)}
+              onBlur={commitEntranceOffset}
+              onKeyDown={e => { if (e.key === 'Enter') commitEntranceOffset() }}
+              title={`Position along the wall (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: '#4A90D999', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 10, color: '#7aa8d9' }}>{unitLabel}</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#7aa8d9' }}>W</span>
+            <input
+              type="number" step={gridSnap} min={0.05} value={entranceWidth}
+              onChange={e => setEntranceWidth(e.target.value)}
+              onBlur={commitEntranceWidth}
+              onKeyDown={e => { if (e.key === 'Enter') commitEntranceWidth() }}
+              title={`Opening width (${unitLabel})`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: '#4A90D999', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 10, color: '#7aa8d9' }}>{unitLabel}</span>
+            {SEP}
+            <button onClick={() => deleteEntrance(selectedEntranceId)} style={BTN_DANGER}>
               Delete
             </button>
           </div>

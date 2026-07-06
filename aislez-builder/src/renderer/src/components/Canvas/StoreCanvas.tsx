@@ -4,6 +4,7 @@ import type Konva from 'konva'
 import GridLayer from './GridLayer'
 import FixtureLayer from './FixtureLayer'
 import WallLayer from './WallLayer'
+import EntranceLayer from './EntranceLayer'
 import ArrowLayer from './ArrowLayer'
 import PerimeterDrawLayer from './PerimeterDrawLayer'
 import Ruler, { RULER_SIZE } from './Ruler'
@@ -11,7 +12,7 @@ import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStor
 import { getChainMembers } from '../../utils/chain'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../../store/uiStore'
 import { useProjectStore } from '../../store/projectStore'
-import { rectsOverlap, rectInsidePolygon } from '../../utils/geometry'
+import { rectsOverlap, rectInsidePolygon, projectOntoSegment } from '../../utils/geometry'
 import { WALL_COLOR } from '../../types'
 import type { FixtureType } from '../../types'
 
@@ -29,7 +30,7 @@ export default function StoreCanvas(): React.ReactElement {
   const didRubberBand   = useRef(false)
   const [stageSize, setStageSize] = useState<StageSize>({ width: 800, height: 600 })
 
-  const { addFixture, addWall, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, selectedWallId, deleteWall } = useCanvasStore()
+  const { addFixture, addWall, addEntrance, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, selectedWallId, deleteWall } = useCanvasStore()
   const { gridMode, tooltip, zoom, panX, panY, activeTool, setViewport, setStageSize: setUiStageSize } = useUiStore()
   const { settings, pixelsPerUnit, gridSizePx, wallDefaults } = useProjectStore()
 
@@ -165,7 +166,9 @@ export default function StoreCanvas(): React.ReactElement {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const s = useCanvasStore.getState()
-        if (s.selectedWallId) {
+        if (s.selectedEntranceId) {
+          s.deleteEntrance(s.selectedEntranceId)
+        } else if (s.selectedWallId) {
           deleteWall(s.selectedWallId)
         } else if (s.selectedFixtureId) {
           deleteFixture(s.selectedFixtureId)
@@ -214,6 +217,27 @@ export default function StoreCanvas(): React.ReactElement {
         return
       }
 
+      // Entrance drop — must land near the store's perimeter outline; hosted
+      // on whichever edge is closest, not free-standing
+      if (e.dataTransfer.getData('itemType') === 'entrance') {
+        const box = stageRef.current.container().getBoundingClientRect()
+        const worldX = (e.clientX - box.left - panX) / zoom / pixelsPerUnit
+        const worldY = (e.clientY - box.top  - panY) / zoom / pixelsPerUnit
+
+        const outline = settings.storeOutline
+        let best: { edgeIndex: number; offset: number; length: number; distSq: number } | null = null
+        for (let i = 0; i < outline.length; i++) {
+          const proj = projectOntoSegment({ x: worldX, y: worldY }, outline[i], outline[(i + 1) % outline.length])
+          if (!best || proj.distSq < best.distSq) best = { edgeIndex: i, offset: proj.offset, length: proj.length, distSq: proj.distSq }
+        }
+        const SNAP_THRESHOLD = 0.5  // world units
+        if (!best || Math.sqrt(best.distSq) > SNAP_THRESHOLD) return
+
+        const defaultWidth = Math.min(settings.unit === 'feet' ? 3 : 1, best.length)
+        addEntrance(best.edgeIndex, best.offset - defaultWidth / 2, defaultWidth)
+        return
+      }
+
       const fixtureType = e.dataTransfer.getData('fixtureType') as FixtureType
       if (!fixtureType) return
 
@@ -252,7 +276,7 @@ export default function StoreCanvas(): React.ReactElement {
 
       addFixture(fixtureType, x, y, width, height, label, customTypeId)
     },
-    [addFixture, addWall, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode, wallDefaults, activeTool]
+    [addFixture, addWall, addEntrance, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode, wallDefaults, activeTool]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
@@ -361,6 +385,7 @@ export default function StoreCanvas(): React.ReactElement {
           )}
 
           <WallLayer />
+          <EntranceLayer />
           <FixtureLayer />
           <ArrowLayer />
           {activeTool === 'draw' && <PerimeterDrawLayer />}

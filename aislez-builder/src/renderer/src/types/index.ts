@@ -69,6 +69,21 @@ export interface Wall {
 
 export const WALL_COLOR = '#2c3e50'
 
+/**
+ * A doorway hosted on a segment of the store's perimeter outline — not a
+ * free object. Position and size are expressed along that one edge, so it
+ * can only slide and resize along that edge, never leave it.
+ */
+export interface Entrance {
+  id: string
+  /** Index into settings.storeOutline — the edge runs from outline[edgeIndex] to outline[edgeIndex+1] */
+  edgeIndex: number
+  /** Distance from the edge's start point (outline[edgeIndex]), along the edge */
+  offset: number
+  /** Opening width, along the edge */
+  width: number
+}
+
 // ─── Product ─────────────────────────────────────────────────────────────────
 
 /** Standard column names products can be mapped to */

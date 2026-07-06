@@ -1,6 +1,26 @@
 export interface Rect { x: number; y: number; width: number; height: number }
 export interface Point { x: number; y: number }
 
+export interface EdgeProjection {
+  /** Distance from `a` to the closest point on segment a→b, along the segment */
+  offset: number
+  /** Length of the segment a→b */
+  length: number
+  /** Squared distance from `p` to the closest point (avoids a sqrt when just comparing) */
+  distSq: number
+}
+
+/** Projects `p` onto segment a→b, clamped to the segment's extent */
+export function projectOntoSegment(p: Point, a: Point, b: Point): EdgeProjection {
+  const abx = b.x - a.x, aby = b.y - a.y
+  const length = Math.hypot(abx, aby)
+  if (length === 0) return { offset: 0, length: 0, distSq: (p.x - a.x) ** 2 + (p.y - a.y) ** 2 }
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / (length * length)
+  t = Math.max(0, Math.min(1, t))
+  const cx = a.x + abx * t, cy = a.y + aby * t
+  return { offset: t * length, length, distSq: (p.x - cx) ** 2 + (p.y - cy) ** 2 }
+}
+
 /** Axis-aligned overlap test; a small epsilon so edges merely touching don't count as overlapping */
 export function rectsOverlap(a: Rect, b: Rect, eps = 0.01): boolean {
   return a.x < b.x + b.width  - eps && a.x + a.width  > b.x + eps &&
