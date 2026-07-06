@@ -297,9 +297,10 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
         y={0}
         width={pw}
         height={ph}
-        fill={WALL_COLOR}
-        stroke={isSelected ? '#ffffff' : 'transparent'}
-        strokeWidth={isSelected ? 1.5 / zoom : 0}
+        fill={isSelected ? 'rgba(44,62,80,0.12)' : 'rgba(44,62,80,0.04)'}
+        stroke={WALL_COLOR}
+        strokeWidth={(isSelected ? 2.5 : 2) / zoom}
+        dash={[10 / zoom, 6 / zoom]}
         shadowColor={isSelected ? WALL_COLOR : 'transparent'}
         shadowBlur={isSelected ? 8 / zoom : 0}
         shadowOpacity={0.6}
