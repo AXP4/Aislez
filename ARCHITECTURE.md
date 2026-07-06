@@ -219,19 +219,34 @@ aislez-builder/
 ### Key Logic
 
 **Store perimeter vs. interior walls — two distinct concepts**
-`storeOutline` (a closed, axis-aligned polygon in `projectStore`) is the *only* thing that defines the interior boundary — it's what `rectInsidePolygon` checks fixtures and walls against, and it never changes shape when perimeter thickness changes. The perimeter is rendered as a border band that grows **outward only** from that polygon, by a thickness that's adjustable per edge (drag the handle on a selected side, or type a value into the toolbar's PERIMETER panel). Interior walls are a completely separate `Wall` entity — placed from the sidebar, always solid, real footprint that blocks fixture placement. The two are visually unified where they touch: a wall side flush against the perimeter suppresses its own border and the perimeter's inner border on that stretch, with a same-color patch to hide the antialiasing seam that would otherwise show between two separately-rendered fills of the same color.
+`storeOutline` (a closed, axis-aligned polygon in `projectStore`) is the *only* thing that defines the interior boundary — it's what `rectInsidePolygon` checks fixtures and walls against, and it never changes shape when perimeter thickness changes. The perimeter is rendered as a border band that grows **outward only** from that polygon, by a thickness that's adjustable per edge (hold-drag the handle on a selected side — deliberately built on raw `window` mouse listeners rather than Konva's own drag system, so it can never get stuck following the cursor after release — or type a value into the toolbar's PERIMETER panel). Interior walls are a completely separate `Wall` entity — placed from the sidebar, always solid, real footprint that blocks fixture placement. The two are visually unified where they touch: a wall side flush against the perimeter suppresses its own border and the perimeter's inner border on that stretch, with a same-color patch to hide the antialiasing seam that would otherwise show between two separately-rendered fills of the same color.
 
 **Entrances are hosted objects, not free-standing**
 An `Entrance` doesn't have its own x/y — its geometry is entirely derived from `edgeIndex` (which storeOutline edge it's on) plus `offset`/`width` along that edge. It can only slide or resize along its host edge. Dropping the sidebar item snaps to whichever outline edge is nearest, within a threshold.
 
 **Location Codes (manual, not auto-generated from position)**
 Auto-deriving a code from canvas X/Y was tried and de-scoped — retailers already have their own aisle/bay numbering, so pixel-position-based codes would conflict with real-world layouts. Instead:
-1. Retailer selects a fixture or chain and types a prefix (e.g. `B3`) into the toolbar
-2. Chain head's prefix propagates through the whole chain, auto-numbered sequentially (`B3-1, B3-2, …`)
-3. Duplicate-prefix detection warns in real time and suggests the next free section number
+1. Retailer selects a fixture or chain, types a prefix (e.g. `B3`) into the toolbar's **Code** field, and a starting section number into the **#** field (defaults to 1)
+2. Chain head's prefix propagates through the whole chain, auto-numbered sequentially from that starting section (`B3-1, B3-2, …`); `#` is read-only for any non-head member
+3. Duplicate-prefix detection warns in real time and suggests the next free section number before it's committed
 
 **Chain system**
-Fixtures can link into a doubly-linked row via `prevId`/`nextId`. Arrow-extend buttons grow a chain by one unit in a direction; detach/rejoin/link operations let a fixture be pulled out of a chain or bridge two open ends. Chain-level select/move/rotate/duplicate/delete operate on the whole row at once.
+Fixtures can link into a doubly-linked row via `prevId`/`nextId` (`utils/chain.ts` has the traversal/direction helpers). A chain locks to whichever direction (up/right/down/left) its first two members established — it can only extend or shrink along that one axis, never branch.
+- **Arrow-extend**: a selected standalone fixture shows an extend arrow in every direction that isn't already occupied by an adjacent fixture; a chain only shows one arrow, on its tail, in the chain's locked direction.
+- **Detach**: dragging a chain member less than 0.5 world units snaps it back into place; past that threshold it detaches (the chain splits — the two remaining ends are *not* auto-bridged) and moves freely.
+- **Rejoin/link**: dropping a detached fixture (or a moved chain's head/tail) adjacent to another chain's open end auto-links them, grid-snap mode only; grid-off is a free placement with no auto-linking.
+- Chain-level select/move/rotate/duplicate/delete operate on the whole row at once via `ChainGroup`, which wraps every member in one draggable Konva Group so they move together in real time.
+
+**Selection model — single click, double click, and Ctrl both mean something different**
+- **Click** a fixture → selects just that one fixture, even if it's part of a chain.
+- **Double-click** a fixture → selects its whole chain (or just itself if standalone).
+- **Ctrl+click** → toggles that one fixture in/out of the multi-selection.
+- **Ctrl+double-click** → adds the fixture's *whole chain* to the multi-selection (detected via a module-level click-timing check, not Konva's `onDblClick` — the first Ctrl+click re-renders the fixture into a different Konva node, so a native dblclick never fires on the same node twice).
+- **Rubber-band drag** on empty canvas → multi-selects every fixture whose bounds intersect the box.
+- Selection is otherwise mutually exclusive across fixture / chain / multi / wall / entrance / perimeter-edge — selecting one clears the others (see `canvasStore`).
+
+**Alignment guides**
+Figma-style snapping, active only when grid mode is off (grid-on uses corner/grid snapping instead — the two are mutually exclusive, not layered). While dragging, the moved object's near edge, far edge, and center (both axes) are compared against the same three points on every other fixture/wall; within an 8-screen-pixel threshold (`GUIDE_THRESHOLD_PX`, converted to world units by the current zoom), it snaps and a green guide line is drawn at that coordinate. The guide lines are plain Konva refs updated directly (`updateGuides` in `FixtureLayer.tsx`), not React state, so dragging doesn't re-render anything. A wall resize uses a single-axis variant of the same idea — only the one moving edge is compared, not all three points, since resizing only moves one edge at a time.
 
 **Direct-Konva-mutation drag pattern**
 Every drag interaction on the canvas (fixture move, wall move/resize, entrance slide/resize, perimeter thickness handle) mutates the Konva node directly frame-by-frame and only writes to the Zustand store once, on drag end. This keeps React re-renders out of the drag loop — writing to the store on every `dragmove` was the original cause of drift/jitter bugs early on.
