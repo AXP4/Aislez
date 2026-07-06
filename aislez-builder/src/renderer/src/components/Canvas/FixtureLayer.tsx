@@ -5,6 +5,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useProjectStore } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import { getChainMembers, deriveDirection } from '../../utils/chain'
+import { rectsOverlap, rectInsidePolygon } from '../../utils/geometry'
 import {
   makeArrow,
   ARROW_GAP_PX, ARROW_RADIUS_PX, ARROW_HIT_PAD, ARROW_COLOR, ARROW_OPACITY
@@ -110,6 +111,14 @@ function resolveLabel(
     return { text: abbrev, fontSize: abbrevFit.fontSize, wrap: 'none', visible: true, needsTooltip: false }
 
   return { text: '', fontSize: abbrevFit.fontSize, wrap: 'none', visible: false, needsTooltip: true }
+}
+
+/** A fixture can't land on a wall or outside the store's perimeter (world units) */
+function hitsWallOrLeavesPerimeter(rect: { x: number; y: number; width: number; height: number }): boolean {
+  const { walls } = useCanvasStore.getState()
+  if (walls.some((w) => rectsOverlap(rect, w))) return true
+  const outline = useProjectStore.getState().settings?.storeOutline
+  return outline ? !rectInsidePolygon(rect, outline) : false
 }
 
 /**
@@ -465,7 +474,8 @@ function FixtureShape({
           newX < f.x + f.width  - 0.01 && newX + fixture.width  > f.x + 0.01 &&
           newY < f.y + f.height - 0.01 && newY + fixture.height > f.y + 0.01
         )
-        if (wouldOverlap) {
+        const invalid = hitsWallOrLeavesPerimeter({ x: newX, y: newY, width: fixture.width, height: fixture.height })
+        if (wouldOverlap || invalid) {
           e.target.position({ x: fixture.x * pixelsPerUnit, y: fixture.y * pixelsPerUnit })
         } else {
           detachAndMove(fixture.id, newX, newY)
@@ -488,6 +498,11 @@ function FixtureShape({
       const all = useCanvasStore.getState().fixtures
       const fw = fixture.width
       const fh = fixture.height
+
+      if (hitsWallOrLeavesPerimeter({ x: newX, y: newY, width: fw, height: fh })) {
+        e.target.position({ x: fixture.x * pixelsPerUnit, y: fixture.y * pixelsPerUnit })
+        return
+      }
 
       if (gridMode !== 'off') {
         const { afterMatch, beforeMatch } = findChainJoin(fixture.id, newX, newY, fw, fh, all)
@@ -737,7 +752,8 @@ function ChainGroup({ duplicateCodes, multiSet }: { duplicateCodes: Set<string>;
       const chainIdSet = new Set(ids)
       const others = state.fixtures.filter(f => !chainIdSet.has(f.id))
 
-      // Block the move if any chain member would land on top of an existing fixture
+      // Block the move if any chain member would land on top of an existing
+      // fixture, on a wall, or outside the store's perimeter
       const wouldOverlap = chainFixtures.some(f => {
         const nx = f.x + dx
         const ny = f.y + dy
@@ -746,7 +762,10 @@ function ChainGroup({ duplicateCodes, multiSet }: { duplicateCodes: Set<string>;
           ny < o.y + o.height - 0.01 && ny + f.height > o.y + 0.01
         )
       })
-      if (wouldOverlap) return  // group already reset to 0,0; store unchanged
+      const invalid = chainFixtures.some(f =>
+        hitsWallOrLeavesPerimeter({ x: f.x + dx, y: f.y + dy, width: f.width, height: f.height })
+      )
+      if (wouldOverlap || invalid) return  // group already reset to 0,0; store unchanged
 
       moveChain(ids, dx, dy)
 
@@ -935,7 +954,10 @@ function MultiSelectGroup(): React.ReactElement | null {
           ny < o.y + o.height - 0.01 && ny + f.height > o.y + 0.01
         )
       })
-      if (wouldOverlap) return
+      const invalid = currentMulti.some(f =>
+        hitsWallOrLeavesPerimeter({ x: f.x + dx, y: f.y + dy, width: f.width, height: f.height })
+      )
+      if (wouldOverlap || invalid) return
 
       moveMulti(multiSelectedIds, dx, dy)
     },

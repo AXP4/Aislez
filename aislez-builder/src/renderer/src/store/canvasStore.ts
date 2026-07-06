@@ -10,6 +10,8 @@ import {
   getChainMembers, getExtendPosition, parseCode,
   findChainAnchorId
 } from '../utils/chain'
+import { rectsOverlap, rectInsidePolygon } from '../utils/geometry'
+import { useProjectStore } from './projectStore'
 
 export interface FixtureDefaults {
   width: number
@@ -316,12 +318,18 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
 
     const pos = getExtendPosition(from, direction)
 
-    // Block if the new fixture would overlap any existing fixture
+    // Block if the new fixture would overlap any existing fixture or wall,
+    // or would land outside the store's perimeter
     const wouldOverlap = s.fixtures.some(f =>
       pos.x < f.x + f.width  && pos.x + from.width  > f.x &&
       pos.y < f.y + f.height && pos.y + from.height > f.y
     )
     if (wouldOverlap) return s
+
+    const newRect = { x: pos.x, y: pos.y, width: from.width, height: from.height }
+    if (s.walls.some((w) => rectsOverlap(newRect, w))) return s
+    const outline = useProjectStore.getState().settings?.storeOutline
+    if (outline && !rectInsidePolygon(newRect, outline)) return s
 
     const newId = generateId()
 

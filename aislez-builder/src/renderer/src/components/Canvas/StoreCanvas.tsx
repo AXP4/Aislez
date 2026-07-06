@@ -11,6 +11,7 @@ import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStor
 import { getChainMembers } from '../../utils/chain'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../../store/uiStore'
 import { useProjectStore } from '../../store/projectStore'
+import { rectsOverlap, rectInsidePolygon } from '../../utils/geometry'
 import { WALL_COLOR } from '../../types'
 import type { FixtureType } from '../../types'
 
@@ -242,6 +243,12 @@ export default function StoreCanvas(): React.ReactElement {
       const snappedPxY = gridMode === 'off' ? rawPxY : Math.round(rawPxY / gridSizePx) * gridSizePx
       const x = Math.round(snappedPxX / pixelsPerUnit * 100) / 100
       const y = Math.round(snappedPxY / pixelsPerUnit * 100) / 100
+
+      // Can't place a fixture on a wall or outside the store's perimeter
+      const newRect = { x, y, width, height }
+      const { walls } = useCanvasStore.getState()
+      if (walls.some((w) => rectsOverlap(newRect, w))) return
+      if (!rectInsidePolygon(newRect, settings.storeOutline)) return
 
       addFixture(fixtureType, x, y, width, height, label, customTypeId)
     },
