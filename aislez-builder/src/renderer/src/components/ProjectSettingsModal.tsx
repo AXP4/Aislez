@@ -69,7 +69,15 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
       scaleAllFixtures(factor)
     }
 
-    updateSettings({ name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap })
+    // Only regenerate the outline (as a plain rectangle) when the declared size or
+    // unit actually changed — otherwise a hand-drawn custom shape would silently
+    // flatten back to a rectangle just from renaming the store or tweaking snap.
+    const dimensionsChanged = !settings || width !== settings.storeWidth || height !== settings.storeHeight || unit !== settings.unit
+    const outlineUpdate = dimensionsChanged
+      ? { storeOutline: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] }
+      : {}
+
+    updateSettings({ name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap, ...outlineUpdate })
     onClose()
   }
 

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Stage, Layer, Rect } from 'react-konva'
+import { Stage, Layer, Rect, Line } from 'react-konva'
 import type Konva from 'konva'
 import GridLayer from './GridLayer'
 import FixtureLayer from './FixtureLayer'
@@ -11,6 +11,7 @@ import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStor
 import { getChainMembers } from '../../utils/chain'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../../store/uiStore'
 import { useProjectStore } from '../../store/projectStore'
+import { WALL_COLOR } from '../../types'
 import type { FixtureType } from '../../types'
 
 interface StageSize {
@@ -275,9 +276,6 @@ export default function StoreCanvas(): React.ReactElement {
     [deselectAll, activeTool]
   )
 
-  const storeW = settings ? settings.storeWidth  * pixelsPerUnit : 0
-  const storeH = settings ? settings.storeHeight * pixelsPerUnit : 0
-
   return (
     <div
       ref={containerRef}
@@ -342,11 +340,16 @@ export default function StoreCanvas(): React.ReactElement {
             )
           })()}
 
+          {/* Perimeter — a dashed outline in wall color, tracing settings.storeOutline
+              (a plain rectangle or a hand-drawn shape). Stands in for a real perimeter
+              wall until that feature exists; not wall geometry, just a reference. */}
           {settings && (
             <Layer listening={false}>
-              <Rect x={0} y={0} width={storeW} height={storeH}
-                fill="rgba(74,144,217,0.04)" stroke="#aab0cc"
-                strokeWidth={1.5} dash={[8, 5]} />
+              <Line
+                points={settings.storeOutline.flatMap((p) => [p.x * pixelsPerUnit, p.y * pixelsPerUnit])}
+                closed
+                fill="rgba(44,62,80,0.04)" stroke={WALL_COLOR}
+                strokeWidth={2 / zoom} dash={[10 / zoom, 6 / zoom]} />
             </Layer>
           )}
 
