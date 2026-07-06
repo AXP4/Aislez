@@ -5,12 +5,14 @@ export type Unit = 'meters' | 'feet'
 export interface ProjectSettings {
   name: string
   unit: Unit
-  /** Store width in the chosen unit */
+  /** Store width in the chosen unit — bounding box of storeOutline */
   storeWidth: number
-  /** Store height in the chosen unit */
+  /** Store height in the chosen unit — bounding box of storeOutline */
   storeHeight: number
   /** Snap increment in the chosen unit (0.01 – 1.0) */
   gridSnap: number
+  /** Closed polygon (world units) tracing the store footprint — just a reference outline, not wall geometry */
+  storeOutline: { x: number; y: number }[]
 }
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
