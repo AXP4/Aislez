@@ -4,27 +4,27 @@
 
 ---
 
-## Phase 1 — Builder: Canvas Foundation
+## Phase 1 — Builder: Canvas Foundation ✅ Complete
 
 **Goal:** A working Electron app with a blank canvas where you can place fixtures and see them rendered.
 
 ### Steps
-1. Set up Electron + React project with Vite
-2. Install Konva.js
-3. Render a blank canvas that fills the window
-4. Add a grid layer (snap grid, toggleable)
-5. Add a sidebar with a fixture library panel (list of fixture types, no drag yet)
-6. Implement drag-from-sidebar → drop-on-canvas for a single fixture type (Shelf)
-7. Render the placed fixture as a labeled rectangle on canvas
-8. Make placed fixtures selectable (click to select, highlight border)
-9. Make selected fixtures moveable (drag to reposition)
-10. Make selected fixtures deleteable (Delete key)
+1. ✅ Set up Electron + React project with Vite
+2. ✅ Install Konva.js
+3. ✅ Render a blank canvas that fills the window
+4. ✅ Add a grid layer (snap grid, toggleable — dots/lines/off)
+5. ✅ Add a sidebar with a fixture library panel (list of fixture types, no drag yet)
+6. ✅ Implement drag-from-sidebar → drop-on-canvas for a single fixture type (Shelf)
+7. ✅ Render the placed fixture as a labeled rectangle on canvas
+8. ✅ Make placed fixtures selectable (click to select, highlight border)
+9. ✅ Make selected fixtures moveable (drag to reposition)
+10. ✅ Make selected fixtures deleteable (Delete key)
 
 **Test:** Open the app, drag a shelf onto the canvas, move it around, delete it.
 
 ---
 
-## Phase 2 — Builder: Location Code System
+## Phase 2 — Builder: Location Code System ✅ Complete
 
 **Goal:** Fixtures have location codes that the retailer can assign and manage. Codes match CSV location codes for auto-linking.
 
@@ -42,22 +42,31 @@
 
 ---
 
-## Phase 3 — Builder: Canvas Tools
+## Phase 3 — Builder: Store Shape, Walls, Entrances & Canvas Tools
 
-**Goal:** Retailer can draw store walls and upload a floorplan image as a background reference.
+**Goal:** Retailer can define the store's outline (rectangle or hand-drawn), place interior walls and entrances, and (still planned) upload a floorplan image as a background reference.
+
+> **Implementation note (July 2026):** This phase grew well past its original "draw a wall, connect segments into an outline" scope, based on founder feedback partway through (inspired by real architectural floor plans). The store's outer boundary and interior walls turned out to need genuinely different behavior, so they became two separate systems instead of one generic "wall" tool:
+> - **Perimeter** = the store's own outer boundary. Defined once (rectangle at project creation, or hand-drawn), then rendered as a border band whose thickness grows **outward only** and is adjustable per side — so retailers can match a real blueprint's wall thickness without it ever eating into usable floor space. The boundary itself (independent of thickness) is what fixtures and interior walls are blocked from crossing.
+> - **Interior walls** = retailer-placed dividers with real footprint that fixtures can't overlap. Dragged from the sidebar like a fixture, fully resizable/rotatable.
+> - **Entrances** = openings hosted on a specific perimeter edge (can only slide/resize along that edge, never become free-standing), dragged from the sidebar and snapped to the nearest outline edge.
+> - Where an interior wall butts up against the perimeter, both sides suppress their outline at the seam so the two read as one continuous wall instead of showing a joint.
 
 ### Steps
-1. ⬜ Add wall drawing tool to toolbar (toggle between Select mode and Draw mode)
-2. ⬜ In Draw mode: click to start wall, click again to end wall segment, renders as a line
-3. ⬜ Connect wall segments to form a store outline
-4. ⬜ Add floorplan image upload button
-5. ⬜ Render uploaded image as a background layer behind fixtures (non-interactive)
-6. ⬜ Image should be scaleable and repositionable
-7. ✅ Arrow-extend: directional arrow buttons on a selected fixture extend the chain one unit; new member is auto-numbered
+1. ✅ Store shape picker in New Project dialog — Rectangle (enter width/height) or Custom (draw it after creating the project)
+2. ✅ Perimeter sketch tool (Draw mode): click to place each corner, snapped perpendicular to the last segment, type an exact length, close the loop by clicking back near the start
+3. ✅ Perimeter renders as a border band (inner edge = the true store boundary, outer edge = boundary + thickness); default thickness per side, individually adjustable by dragging a handle on a selected side or typing a value into the toolbar
+4. ✅ Interior wall placement: drag from sidebar, move/resize/rotate, duplicate, always-outlined styling, seam-blended where flush against the perimeter
+5. ✅ Entrances: drag from sidebar, snap to nearest perimeter edge, slide/resize along that edge, toolbar property panel
+6. ✅ Fixtures and interior walls blocked from overlapping a wall or leaving the store's perimeter boundary
+7. ⬜ Add floorplan image upload button
+8. ⬜ Render uploaded image as a background layer behind fixtures (non-interactive)
+9. ⬜ Image should be scaleable and repositionable
+10. ✅ Arrow-extend: directional arrow buttons on a selected fixture extend the chain one unit; new member is auto-numbered
 
-> **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off only), Duplicate (Ctrl+D).
+> **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off only), Duplicate (Ctrl+D), full undo/redo history across fixtures/walls/entrances.
 
-**Test:** Upload a floorplan image, draw walls over it, place fixtures on top, extend a shelf row.
+**Test:** Create a store with a custom-drawn outline, adjust one side's thickness, place an interior wall flush against that side and confirm the seam disappears, add an entrance on another side, place fixtures and confirm they can't cross the perimeter or overlap the wall. Floorplan image upload is the one remaining ⬜ item before this phase is fully done.
 
 ---
 
@@ -66,7 +75,7 @@
 **Goal:** Retailer can save their work as a .ifp file and reopen it later.
 
 ### Steps
-1. Implement Zustand stores (canvasStore, productStore, uiStore) if not already done
+1. canvasStore/projectStore/uiStore already exist from earlier phases — CSV/product data will need a new store (or an extension of an existing one) once Phase 5 starts
 2. Write fileManager.js in Electron main process
    - saveProject(): serialize all store state → write as .ifp file (JSON)
    - loadProject(): read .ifp file → parse → hydrate all stores
@@ -194,4 +203,4 @@
 
 ---
 
-*Last updated: June 2026*
+*Last updated: July 2026*
