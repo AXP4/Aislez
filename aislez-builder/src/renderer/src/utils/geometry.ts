@@ -236,3 +236,28 @@ export function invertIntervals(covered: [number, number][], length: number): [n
   if (cursor < length) gaps.push([cursor, length])
   return gaps
 }
+
+/**
+ * True if a wall side (given as its constant coordinate and span along the
+ * free axis) sits flush against some edge of storeOutline. Mirrors
+ * wallCoveredIntervals from the wall's point of view — used to suppress the
+ * wall's own outline stroke on the side touching the perimeter, so the two
+ * fills read as one continuous surface instead of showing a seam on either
+ * side of the join.
+ */
+export function isWallSideFlushWithOutline(
+  outline: Point[], sideConst: number, sideLo: number, sideHi: number, horizontal: boolean
+): boolean {
+  const n = outline.length
+  for (let i = 0; i < n; i++) {
+    const p1 = outline[i], p2 = outline[(i + 1) % n]
+    const edgeHoriz = p1.y === p2.y
+    if (edgeHoriz !== horizontal) continue
+    const edgeConst = edgeHoriz ? p1.y : p1.x
+    if (Math.abs(edgeConst - sideConst) > FLUSH_EPS) continue
+    const edgeMin = edgeHoriz ? Math.min(p1.x, p2.x) : Math.min(p1.y, p2.y)
+    const edgeMax = edgeHoriz ? Math.max(p1.x, p2.x) : Math.max(p1.y, p2.y)
+    if (Math.min(sideHi, edgeMax) > Math.max(sideLo, edgeMin)) return true
+  }
+  return false
+}

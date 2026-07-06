@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from 'react'
-import { Layer, Rect, Group, Shape } from 'react-konva'
+import { Layer, Rect, Group, Shape, Line } from 'react-konva'
 import type Konva from 'konva'
 import { useCanvasStore } from '../../store/canvasStore'
 import { useProjectStore } from '../../store/projectStore'
@@ -8,6 +8,7 @@ import { computeAlignmentSnap, updateGuides, GUIDE_THRESHOLD_PX } from './Fixtur
 import type { AlignBox } from './FixtureLayer'
 import { WALL_COLOR } from '../../types'
 import type { Wall } from '../../types'
+import { isWallSideFlushWithOutline } from '../../utils/geometry'
 
 const MIN_WALL_SIZE = 0.05   // world units
 const ARROW_SIZE_PX = 10     // arrow glyph size, screen pixels
@@ -112,11 +113,14 @@ function makeArrowSceneFunc(side: HandleSide, s: number) {
 
 function WallRect({ wall }: { wall: Wall }): React.ReactElement {
   const { selectWall, moveWall, resizeWall, selectedWallId } = useCanvasStore()
-  const { pixelsPerUnit: ppu } = useProjectStore()
+  const { pixelsPerUnit: ppu, settings } = useProjectStore()
   const { gridMode, zoom } = useUiStore()
 
   const groupRef  = useRef<Konva.Group>(null)
   const rectRef   = useRef<Konva.Rect>(null)
+  const borderRefs = useRef<Record<HandleSide, Konva.Line | null>>({
+    left: null, right: null, top: null, bottom: null
+  })
   const handleRefs = useRef<Record<HandleSide, Konva.Group | null>>({
     left: null, right: null, top: null, bottom: null
   })
@@ -131,6 +135,30 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
   const pw = wall.width * ppu
   const ph = wall.height * ppu
   const restGeom: Geom = { x: wall.x, y: wall.y, w: wall.width, h: wall.height }
+
+  // A side flush against the store's perimeter draws no border of its own —
+  // the perimeter's inner outline is also suppressed there (see
+  // PerimeterWallLayer) so the two fills read as one continuous surface.
+  const outline = settings?.storeOutline
+  const touches: Record<HandleSide, boolean> = {
+    left:   outline ? isWallSideFlushWithOutline(outline, wall.x, wall.y, wall.y + wall.height, false) : false,
+    right:  outline ? isWallSideFlushWithOutline(outline, wall.x + wall.width, wall.y, wall.y + wall.height, false) : false,
+    top:    outline ? isWallSideFlushWithOutline(outline, wall.y, wall.x, wall.x + wall.width, true) : false,
+    bottom: outline ? isWallSideFlushWithOutline(outline, wall.y + wall.height, wall.x, wall.x + wall.width, true) : false
+  }
+
+  // Each border line overshoots its own corner slightly (in screen pixels,
+  // so it stays a constant size regardless of zoom) — otherwise two adjacent
+  // walls' independently-stroked borders can leave a hairline antialiasing
+  // gap at the shared corner where neither line's flat end-cap quite reaches.
+  const borderPoints = (side: HandleSide, w: number, h: number, ext: number): number[] => {
+    switch (side) {
+      case 'left':   return [0, -ext, 0, h + ext]
+      case 'right':  return [w, -ext, w, h + ext]
+      case 'top':    return [-ext, 0, w + ext, 0]
+      case 'bottom': return [-ext, h, w + ext, h]
+    }
+  }
 
   // ── Move: group drag ────────────────────────────────────────────────────────
 
@@ -177,14 +205,15 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
 
   /** Push a geometry onto the Konva nodes directly (no React involvement). */
   const applyGeom = useCallback((geom: Geom, origin: { x: number; y: number }): void => {
-    rectRef.current?.setAttrs({
-      x: (geom.x - origin.x) * ppu,
-      y: (geom.y - origin.y) * ppu,
-      width: geom.w * ppu,
-      height: geom.h * ppu
-    })
+    const x = (geom.x - origin.x) * ppu
+    const y = (geom.y - origin.y) * ppu
+    const w = geom.w * ppu
+    const h = geom.h * ppu
+    const ext = 1.5 / useUiStore.getState().zoom
+    rectRef.current?.setAttrs({ x, y, width: w, height: h })
     for (const side of SIDES) {
       handleRefs.current[side]?.position(handleCentre(side, geom, origin, ppu))
+      borderRefs.current[side]?.setAttrs({ x, y, points: borderPoints(side, w, h, ext) })
     }
     groupRef.current?.getLayer()?.batchDraw()
   }, [ppu])
@@ -262,9 +291,11 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     // BEFORE committing, so node state matches what React will render — props
     // that happen to be unchanged won't be re-applied by react-konva.
     groupRef.current?.position({ x: g.x * ppu, y: g.y * ppu })
+    const ext = 1.5 / useUiStore.getState().zoom
     rectRef.current?.setAttrs({ x: 0, y: 0, width: g.w * ppu, height: g.h * ppu })
     for (const side of SIDES) {
       handleRefs.current[side]?.position(handleCentre(side, g, g, ppu))
+      borderRefs.current[side]?.setAttrs({ x: 0, y: 0, points: borderPoints(side, g.w * ppu, g.h * ppu, ext) })
     }
     resizeWall(wall.id, g.x, g.y, g.w, g.h)
   }, [wall.id, ppu, resizeWall])
@@ -291,22 +322,33 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
       onClick={(e) => { e.cancelBubble = true; selectWall(wall.id) }}
       onTap={(e) => { e.cancelBubble = true; selectWall(wall.id) }}
     >
+      {/* Interior walls take real floor space, unlike the perimeter (which is
+          just a zero-footprint reference line) — so thickness needs to read
+          clearly as solid, occupied space rather than a thin outline. */}
       <Rect
         ref={rectRef}
         x={0}
         y={0}
         width={pw}
         height={ph}
-        fill={isSelected ? 'rgba(44,62,80,0.12)' : 'rgba(44,62,80,0.04)'}
-        stroke={WALL_COLOR}
-        strokeWidth={(isSelected ? 2.5 : 2) / zoom}
-        dash={[10 / zoom, 6 / zoom]}
+        fill={WALL_COLOR}
         shadowColor={isSelected ? WALL_COLOR : 'transparent'}
         shadowBlur={isSelected ? 8 / zoom : 0}
         shadowOpacity={0.6}
         onMouseEnter={(e) => setCursor(e, 'move')}
         onMouseLeave={(e) => setCursor(e, 'default')}
       />
+      {SIDES.filter((side) => !touches[side]).map((side) => (
+        <Line
+          key={side}
+          ref={(n) => { borderRefs.current[side] = n }}
+          x={0} y={0}
+          points={borderPoints(side, pw, ph, 1.5 / zoom)}
+          stroke={isSelected ? '#ffffff' : '#000000'}
+          strokeWidth={1.5 / zoom}
+          listening={false}
+        />
+      ))}
       {isSelected && SIDES.map((side) => {
         const c = handleCentre(side, restGeom, restGeom, ppu)
         const isHoriz = side === 'left' || side === 'right'
