@@ -335,6 +335,41 @@ function WallItem(): React.ReactElement {
   )
 }
 
+// ─── EntranceItem ───────────────────────────────────────────────────────────
+
+function EntranceItem(): React.ReactElement {
+  const [hovered, setHovered] = useState(false)
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>): void => {
+    e.dataTransfer.setData('itemType', 'entrance')
+    e.dataTransfer.effectAllowed = 'copy'
+    const canvas = makeDragPreview('Door', WALL_COLOR, 80, 16)
+    e.dataTransfer.setDragImage(canvas, 40, 8)
+    setTimeout(() => canvas.remove(), 0)
+  }
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ ...itemBase, background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)' }}
+    >
+      <div style={{
+        width: 24, height: 8, borderRadius: 2, flexShrink: 0,
+        background: WALL_COLOR, position: 'relative', overflow: 'hidden'
+      }}>
+        <div style={{ position: 'absolute', left: 8, top: 0, width: 8, height: '100%', background: '#ffffff' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, color: '#dde0e8' }}>Entrance</span>
+        <span style={{ fontSize: 10, color: '#555570' }}>Drop onto a wall</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── FixtureLibrary ───────────────────────────────────────────────────────────
 
 export default function FixtureLibrary(): React.ReactElement {
@@ -362,6 +397,7 @@ export default function FixtureLibrary(): React.ReactElement {
         Walls
       </div>
       <WallItem />
+      <EntranceItem />
       <div style={{ height: 1, background: '#2a2a44', margin: '12px 0 10px' }} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
