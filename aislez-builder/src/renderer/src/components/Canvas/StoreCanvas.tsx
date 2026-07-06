@@ -5,6 +5,7 @@ import GridLayer from './GridLayer'
 import FixtureLayer from './FixtureLayer'
 import WallLayer from './WallLayer'
 import ArrowLayer from './ArrowLayer'
+import PerimeterDrawLayer from './PerimeterDrawLayer'
 import Ruler, { RULER_SIZE } from './Ruler'
 import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStore'
 import { getChainMembers } from '../../utils/chain'
@@ -27,7 +28,7 @@ export default function StoreCanvas(): React.ReactElement {
   const [stageSize, setStageSize] = useState<StageSize>({ width: 800, height: 600 })
 
   const { addFixture, addWall, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, selectedWallId, deleteWall } = useCanvasStore()
-  const { gridMode, tooltip, zoom, panX, panY, setViewport, setStageSize: setUiStageSize } = useUiStore()
+  const { gridMode, tooltip, zoom, panX, panY, activeTool, setViewport, setStageSize: setUiStageSize } = useUiStore()
   const { settings, pixelsPerUnit, gridSizePx, wallDefaults } = useProjectStore()
 
   // Fill available space (minus rulers), propagate to uiStore for fit-to-store
@@ -188,7 +189,7 @@ export default function StoreCanvas(): React.ReactElement {
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>): void => {
       e.preventDefault()
-      if (!stageRef.current || !settings) return
+      if (!stageRef.current || !settings || activeTool === 'draw') return
 
       // Wall drop
       if (e.dataTransfer.getData('itemType') === 'wall') {
@@ -243,7 +244,7 @@ export default function StoreCanvas(): React.ReactElement {
 
       addFixture(fixtureType, x, y, width, height, label, customTypeId)
     },
-    [addFixture, addWall, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode, wallDefaults]
+    [addFixture, addWall, settings, pixelsPerUnit, gridSizePx, zoom, panX, panY, gridMode, wallDefaults, activeTool]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>): void => {
@@ -252,6 +253,7 @@ export default function StoreCanvas(): React.ReactElement {
 
   const handleStageMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): void => {
+      if (activeTool === 'draw') return
       if (e.evt.button !== 0) return
       if (e.target !== e.target.getStage()) return  // only on empty canvas
       if (!stageRef.current) return
@@ -261,15 +263,16 @@ export default function StoreCanvas(): React.ReactElement {
       const sy = (e.evt.clientY - rect.top  - panY) / zoom
       rubberStart.current = { x: sx, y: sy }
     },
-    []
+    [activeTool]
   )
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): void => {
+      if (activeTool === 'draw') return
       if (didRubberBand.current) { didRubberBand.current = false; return }
       if (!e.evt.ctrlKey && e.target === e.target.getStage()) deselectAll()
     },
-    [deselectAll]
+    [deselectAll, activeTool]
   )
 
   const storeW = settings ? settings.storeWidth  * pixelsPerUnit : 0
@@ -350,6 +353,7 @@ export default function StoreCanvas(): React.ReactElement {
           <WallLayer />
           <FixtureLayer />
           <ArrowLayer />
+          {activeTool === 'draw' && <PerimeterDrawLayer />}
           {/* Rubber band selection rectangle — always mounted, hidden when inactive */}
           <Layer listening={false}>
             <Rect
@@ -362,6 +366,17 @@ export default function StoreCanvas(): React.ReactElement {
           </Layer>
         </Stage>
       </div>
+
+      {activeTool === 'draw' && (
+        <div style={{
+          position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+          background: '#1a1a2e', color: '#dde0e8', border: '1px solid #3a3a5a',
+          borderRadius: 6, padding: '7px 14px', fontSize: 12, lineHeight: 1.5,
+          whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 20
+        }}>
+          Click to place corners &middot; type a number for an exact length &middot; click the start point to finish &middot; Esc to cancel
+        </div>
+      )}
 
       {tooltip.visible && (
         <div style={{
