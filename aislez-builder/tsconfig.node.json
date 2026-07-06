@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "composite": true,
+    "outDir": "./.tsc-out/node",
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "bundler",

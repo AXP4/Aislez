@@ -47,6 +47,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# tsc --build output (type-check only; electron-vite/Vite does the real build)
+.tsc-out/
+
 # Optional npm cache directory
 .npm
 
