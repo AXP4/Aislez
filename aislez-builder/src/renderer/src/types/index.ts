@@ -13,6 +13,12 @@ export interface ProjectSettings {
   gridSnap: number
   /** Closed polygon (world units) tracing the store footprint — just a reference outline, not wall geometry */
   storeOutline: { x: number; y: number }[]
+  /**
+   * Wall thickness for each edge of storeOutline (parallel array, one entry
+   * per edge). Grows outward only — the polygon above always stays the true
+   * interior boundary used for fixture/wall containment.
+   */
+  perimeterThickness: number[]
 }
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────

@@ -37,6 +37,14 @@ function makeWallDefaults(unit: Unit): WallDefaults {
   return unit === 'feet' ? { width: 10, height: 0.75 } : { width: 3, height: 0.2 }
 }
 
+/** Default perimeter wall thickness when a store outline is (re)created, per edge */
+export const DEFAULT_PERIMETER_THICKNESS: Record<Unit, number> = { meters: 0.2, feet: 0.75 }
+export const MIN_PERIMETER_THICKNESS = 0.02
+
+export function makePerimeterThickness(unit: Unit, edgeCount: number): number[] {
+  return Array(edgeCount).fill(DEFAULT_PERIMETER_THICKNESS[unit])
+}
+
 /** How many canvas pixels represent one real-world unit */
 export const PIXELS_PER_UNIT: Record<Unit, number> = {
   meters: 60,
@@ -54,7 +62,7 @@ export const DEFAULT_DIMENSIONS: Record<Unit, { width: number; height: number }>
   feet:   { width: 100, height: 65 }
 }
 
-type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline'>>
+type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness'>>
 
 interface ProjectStore {
   settings: ProjectSettings | null
@@ -76,6 +84,8 @@ interface ProjectStore {
   updateCustomFixtureType: (id: string, updates: Omit<CustomFixtureType, 'id'>) => void
   deleteCustomFixtureType: (id: string) => void
   updateWallDefaults: (updates: Partial<WallDefaults>) => void
+  /** Adjust one edge's perimeter wall thickness (grows outward only) */
+  setPerimeterEdgeThickness: (edgeIndex: number, thickness: number) => void
 }
 
 function derive(settings: ProjectSettings): { pixelsPerUnit: number; gridSizePx: number } {
@@ -131,5 +141,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   updateWallDefaults: (updates) => set((s) => ({
     wallDefaults: { ...s.wallDefaults, ...updates }
-  }))
+  })),
+
+  setPerimeterEdgeThickness: (edgeIndex, thickness) => set((s) => {
+    if (!s.settings) return s
+    const clamped = Math.round(Math.max(thickness, MIN_PERIMETER_THICKNESS) * 100) / 100
+    const perimeterThickness = s.settings.perimeterThickness.map((t, i) => i === edgeIndex ? clamped : t)
+    return { settings: { ...s.settings, perimeterThickness } }
+  })
 }))

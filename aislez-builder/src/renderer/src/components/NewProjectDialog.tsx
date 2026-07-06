@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useProjectStore, DEFAULT_DIMENSIONS, DEFAULT_GRID_SNAP, MIN_GRID_SNAP, MAX_GRID_SNAP } from '../store/projectStore'
+import { useProjectStore, DEFAULT_DIMENSIONS, DEFAULT_GRID_SNAP, MIN_GRID_SNAP, MAX_GRID_SNAP, makePerimeterThickness } from '../store/projectStore'
 import { useUiStore } from '../store/uiStore'
 import type { Unit, ProjectSettings } from '../types'
 
@@ -67,16 +67,18 @@ export default function NewProjectDialog(): React.ReactElement {
     }
 
     if (shape === 'rectangle') {
+      const outline = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap,
-        storeOutline: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]
+        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length)
       }
       initProject(settings)
     } else {
       const dims = DEFAULT_DIMENSIONS[unit]
+      const outline = [{ x: 0, y: 0 }, { x: dims.width, y: 0 }, { x: dims.width, y: dims.height }, { x: 0, y: dims.height }]
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: dims.width, storeHeight: dims.height, gridSnap,
-        storeOutline: [{ x: 0, y: 0 }, { x: dims.width, y: 0 }, { x: dims.width, y: dims.height }, { x: 0, y: dims.height }]
+        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length)
       }
       initProject(settings)
       useUiStore.getState().setActiveTool('draw')

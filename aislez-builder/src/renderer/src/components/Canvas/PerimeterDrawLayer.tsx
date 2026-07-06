@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { Layer, Rect, Line, Circle, Text } from 'react-konva'
 import type Konva from 'konva'
-import { useProjectStore } from '../../store/projectStore'
+import { useProjectStore, makePerimeterThickness } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import { updateGuides, GUIDE_THRESHOLD_PX } from './FixtureLayer'
 import { WALL_COLOR } from '../../types'
@@ -106,10 +106,12 @@ export default function PerimeterDrawLayer(): React.ReactElement {
         x: Math.round((p.x - minX) * 100) / 100,
         y: Math.round((p.y - minY) * 100) / 100
       }))
+      const unit = useProjectStore.getState().settings!.unit
       useProjectStore.getState().updateSettings({
         storeWidth:   Math.round((maxX - minX) * 100) / 100,
         storeHeight:  Math.round((maxY - minY) * 100) / 100,
-        storeOutline: shifted
+        storeOutline: shifted,
+        perimeterThickness: makePerimeterThickness(unit, shifted.length)
       })
       useUiStore.getState().setActiveTool('select')
       return []

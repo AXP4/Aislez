@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useProjectStore, MIN_GRID_SNAP, MAX_GRID_SNAP } from '../store/projectStore'
+import { useProjectStore, MIN_GRID_SNAP, MAX_GRID_SNAP, makePerimeterThickness } from '../store/projectStore'
 import { useCanvasStore } from '../store/canvasStore'
 import type { Unit } from '../types'
 
@@ -74,7 +74,10 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
     // flatten back to a rectangle just from renaming the store or tweaking snap.
     const dimensionsChanged = !settings || width !== settings.storeWidth || height !== settings.storeHeight || unit !== settings.unit
     const outlineUpdate = dimensionsChanged
-      ? { storeOutline: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }] }
+      ? {
+          storeOutline: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }],
+          perimeterThickness: makePerimeterThickness(unit, 4)
+        }
       : {}
 
     updateSettings({ name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap, ...outlineUpdate })

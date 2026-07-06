@@ -51,9 +51,10 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     fixtures, moveFixture, moveChain, setFixtureCode,
     deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti,
     walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall,
-    entrances, selectedEntranceId, deleteEntrance, moveEntrance, resizeEntrance
+    entrances, selectedEntranceId, deleteEntrance, moveEntrance, resizeEntrance,
+    selectedPerimeterEdge
   } = useCanvasStore()
-  const { settings, formatUnitShort, pixelsPerUnit } = useProjectStore()
+  const { settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness } = useProjectStore()
 
   const canUndo = past.length > 0
   const canRedo = future.length > 0
@@ -301,6 +302,26 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     const v = parseFloat(wallH)
     if (isNaN(v) || v <= 0) { setWallH(String(parseFloat(selectedWall.height.toFixed(2)))); return }
     resizeWall(selectedWall.id, selectedWall.x, selectedWall.y, selectedWall.width, v)
+  }
+
+  // ── Perimeter edge thickness input ──────────────────────────────────────────
+  const selectedPerimeterThickness = selectedPerimeterEdge !== null
+    ? settings?.perimeterThickness[selectedPerimeterEdge] ?? null
+    : null
+  const [perimThickness, setPerimThickness] = useState('')
+
+  useEffect(() => {
+    setPerimThickness(selectedPerimeterThickness !== null ? String(parseFloat(selectedPerimeterThickness.toFixed(2))) : '')
+  }, [selectedPerimeterEdge, selectedPerimeterThickness])
+
+  const commitPerimThickness = (): void => {
+    if (selectedPerimeterEdge === null) return
+    const v = parseFloat(perimThickness)
+    if (isNaN(v) || v <= 0) {
+      if (selectedPerimeterThickness !== null) setPerimThickness(String(parseFloat(selectedPerimeterThickness.toFixed(2))))
+      return
+    }
+    setPerimeterEdgeThickness(selectedPerimeterEdge, v)
   }
 
   // ── Entrance inputs ────────────────────────────────────────────────────────
@@ -668,6 +689,30 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
             <button onClick={() => deleteEntrance(selectedEntranceId)} style={BTN_DANGER}>
               Delete
             </button>
+          </div>
+        )}
+        {/* ── Perimeter parameters ── only when a perimeter side is selected ── */}
+        {selectedPerimeterEdge !== null && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            borderLeft: `2px solid ${WALL_COLOR}`,
+            background: 'rgba(44,62,80,0.18)',
+            borderRadius: '0 4px 4px 0',
+            paddingLeft: 10, paddingRight: 6,
+            marginLeft: 2, height: 28
+          }}>
+            <span style={{ fontSize: 10, color: '#7a95a8', fontWeight: 600, letterSpacing: '0.04em' }}>PERIMETER</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#7a95a8' }}>Thickness</span>
+            <input
+              type="number" step={gridSnap} min={0.02} value={perimThickness}
+              onChange={e => setPerimThickness(e.target.value)}
+              onBlur={commitPerimThickness}
+              onKeyDown={e => { if (e.key === 'Enter') commitPerimThickness() }}
+              title={`Wall thickness (${unitLabel}) — grows outward only`}
+              style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
+            />
+            <span style={{ fontSize: 10, color: '#7a95a8' }}>{unitLabel}</span>
           </div>
         )}
       </div>

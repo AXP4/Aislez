@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { Stage, Layer, Rect, Line } from 'react-konva'
+import { Stage, Layer, Rect } from 'react-konva'
 import type Konva from 'konva'
 import GridLayer from './GridLayer'
 import FixtureLayer from './FixtureLayer'
@@ -7,13 +7,13 @@ import WallLayer from './WallLayer'
 import EntranceLayer from './EntranceLayer'
 import ArrowLayer from './ArrowLayer'
 import PerimeterDrawLayer from './PerimeterDrawLayer'
+import PerimeterWallLayer from './PerimeterWallLayer'
 import Ruler, { RULER_SIZE } from './Ruler'
 import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStore'
 import { getChainMembers } from '../../utils/chain'
 import { useUiStore, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from '../../store/uiStore'
 import { useProjectStore } from '../../store/projectStore'
 import { rectsOverlap, rectInsidePolygon, projectOntoSegment } from '../../utils/geometry'
-import { WALL_COLOR } from '../../types'
 import type { FixtureType } from '../../types'
 
 interface StageSize {
@@ -371,18 +371,11 @@ export default function StoreCanvas(): React.ReactElement {
             )
           })()}
 
-          {/* Perimeter — a dashed outline in wall color, tracing settings.storeOutline
-              (a plain rectangle or a hand-drawn shape). Stands in for a real perimeter
-              wall until that feature exists; not wall geometry, just a reference. */}
-          {settings && (
-            <Layer listening={false}>
-              <Line
-                points={settings.storeOutline.flatMap((p) => [p.x * pixelsPerUnit, p.y * pixelsPerUnit])}
-                closed
-                fill="rgba(44,62,80,0.04)" stroke={WALL_COLOR}
-                strokeWidth={2 / zoom} dash={[10 / zoom, 6 / zoom]} />
-            </Layer>
-          )}
+          {/* Perimeter — a border band drawn outward from settings.storeOutline,
+              which itself stays the true interior boundary. Containment is
+              handled separately by rectInsidePolygon against that same outline,
+              so thickening the perimeter here never eats into floor space. */}
+          <PerimeterWallLayer />
 
           <WallLayer />
           <EntranceLayer />
