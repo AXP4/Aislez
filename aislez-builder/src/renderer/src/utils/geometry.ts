@@ -65,6 +65,54 @@ function segmentsIntersect(p1: Point, p2: Point, p3: Point, p4: Point): boolean 
   return false
 }
 
+/**
+ * True if two axis-aligned segments run along the same line and their ranges
+ * overlap by more than a single touching point — i.e. one is being retraced
+ * over (or through) the other, not just meeting it end-to-end.
+ */
+function segmentsOverlapCollinearly(a1: Point, a2: Point, b1: Point, b2: Point): boolean {
+  const aHoriz = a1.y === a2.y
+  const bHoriz = b1.y === b2.y
+  if (aHoriz !== bHoriz) return false
+  if (aHoriz) {
+    if (Math.abs(a1.y - b1.y) > 1e-9) return false
+    const aLo = Math.min(a1.x, a2.x), aHi = Math.max(a1.x, a2.x)
+    const bLo = Math.min(b1.x, b2.x), bHi = Math.max(b1.x, b2.x)
+    return Math.max(aLo, bLo) < Math.min(aHi, bHi) - 1e-9
+  }
+  if (Math.abs(a1.x - b1.x) > 1e-9) return false
+  const aLo = Math.min(a1.y, a2.y), aHi = Math.max(a1.y, a2.y)
+  const bLo = Math.min(b1.y, b2.y), bHi = Math.max(b1.y, b2.y)
+  return Math.max(aLo, bLo) < Math.min(aHi, bHi) - 1e-9
+}
+
+/**
+ * True if adding segment `from`→`to` to a perimeter sketch already made up of
+ * `points` would make the outline non-simple (retrace an earlier segment, or
+ * cross one, carving out a second enclosed space instead of one clean loop).
+ * `from` is always the last placed point, so it legitimately shares an
+ * endpoint with the immediately-preceding segment — and, when closing the
+ * loop, `to` legitimately shares a point with the very first segment too.
+ * Those two adjacencies are expected and only rejected if they overlap
+ * *beyond* that single shared point (the retrace case); every other existing
+ * segment must not touch the new one at all.
+ */
+export function wouldSegmentSelfIntersect(points: Point[], from: Point, to: Point, isClosingLoop: boolean): boolean {
+  const n = points.length
+  if (n < 2) return false
+  for (let i = 0; i < n - 1; i++) {
+    const p1 = points[i], p2 = points[i + 1]
+    const isPrevAdjacent = i === n - 2
+    const isFirstAdjacent = isClosingLoop && i === 0
+    if (isPrevAdjacent || isFirstAdjacent) {
+      if (segmentsOverlapCollinearly(from, to, p1, p2)) return true
+      continue
+    }
+    if (segmentsIntersect(from, to, p1, p2)) return true
+  }
+  return false
+}
+
 const rectCorners = (r: Rect): Point[] => [
   { x: r.x, y: r.y }, { x: r.x + r.width, y: r.y },
   { x: r.x + r.width, y: r.y + r.height }, { x: r.x, y: r.y + r.height }

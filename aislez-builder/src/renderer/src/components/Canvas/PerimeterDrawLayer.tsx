@@ -4,6 +4,7 @@ import type Konva from 'konva'
 import { useProjectStore, makePerimeterThickness } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import { updateGuides, GUIDE_THRESHOLD_PX } from './FixtureLayer'
+import { wouldSegmentSelfIntersect } from '../../utils/geometry'
 import { WALL_COLOR } from '../../types'
 
 interface Point { x: number; y: number }  // world units
@@ -89,6 +90,11 @@ export default function PerimeterDrawLayer(): React.ReactElement {
 
   const segLen = last && preview ? Math.hypot(preview.x - last.x, preview.y - last.y) : 0
 
+  // Reject a segment that would retrace or cross the outline drawn so far —
+  // either makes the loop non-simple (a figure-eight / an accidentally-split
+  // second space) instead of one clean boundary.
+  const blocked = !!(last && preview && wouldSegmentSelfIntersect(points, last, preview, isClosing))
+
   useEffect(() => {
     updateGuides(guideYWorld, guideXWorld)
   }, [guideYWorld, guideXWorld])
@@ -127,22 +133,22 @@ export default function PerimeterDrawLayer(): React.ReactElement {
 
   const handleClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>): void => {
     e.cancelBubble = true
-    if (e.evt.button !== 0 || !preview) return
+    if (e.evt.button !== 0 || !preview || blocked) return
     if (isClosing) { finalize(); return }
     setPoints((pts) => [...pts, preview!])
     setNumberBuffer('')
-  }, [preview, isClosing, finalize])
+  }, [preview, isClosing, finalize, blocked])
 
   // Keyboard: digits build an exact length, Enter commits it, Backspace undoes
   // a digit or the last corner, Escape cancels the number or the whole sketch.
-  const liveRef = useRef({ numberBuffer, preview, isClosing, last })
-  liveRef.current = { numberBuffer, preview, isClosing, last }
+  const liveRef = useRef({ numberBuffer, preview, isClosing, last, blocked })
+  liveRef.current = { numberBuffer, preview, isClosing, last, blocked }
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      const { numberBuffer: buf, preview: pv, isClosing: closing, last: lastPt } = liveRef.current
+      const { numberBuffer: buf, preview: pv, isClosing: closing, last: lastPt, blocked: isBlocked } = liveRef.current
 
       if (e.key === 'Escape') {
         if (buf) { setNumberBuffer(''); return }
@@ -156,7 +162,7 @@ export default function PerimeterDrawLayer(): React.ReactElement {
         return
       }
       if (e.key === 'Enter') {
-        if (buf && pv && lastPt) {
+        if (buf && pv && lastPt && !isBlocked) {
           if (closing) finalize()
           else setPoints((pts) => [...pts, pv])
           setNumberBuffer('')
@@ -190,7 +196,7 @@ export default function PerimeterDrawLayer(): React.ReactElement {
       {last && preview && (
         <Line
           points={flat([last, preview])}
-          stroke={isClosing ? '#27AE60' : WALL_COLOR}
+          stroke={blocked ? '#E74C3C' : isClosing ? '#27AE60' : WALL_COLOR}
           strokeWidth={2 / zoom}
           dash={[6 / zoom, 4 / zoom]}
           listening={false}
@@ -216,10 +222,10 @@ export default function PerimeterDrawLayer(): React.ReactElement {
         <Text
           x={((last.x + preview.x) / 2) * ppu}
           y={((last.y + preview.y) / 2) * ppu - 18 / zoom}
-          text={isClosing ? 'Click to close' : numberBuffer ? `${numberBuffer} ${unitLabel}` : `${segLen.toFixed(2)} ${unitLabel}`}
+          text={blocked ? "Can't cross or retrace the outline" : isClosing ? 'Click to close' : numberBuffer ? `${numberBuffer} ${unitLabel}` : `${segLen.toFixed(2)} ${unitLabel}`}
           fontSize={13 / zoom}
           fontStyle="bold"
-          fill={isClosing ? '#27AE60' : '#2c3e50'}
+          fill={blocked ? '#E74C3C' : isClosing ? '#27AE60' : '#2c3e50'}
           listening={false}
         />
       )}
