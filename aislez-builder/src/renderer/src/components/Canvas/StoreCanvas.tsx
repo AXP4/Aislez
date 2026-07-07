@@ -382,8 +382,12 @@ export default function StoreCanvas(): React.ReactElement {
           {/* Perimeter — a border band drawn outward from settings.storeOutline,
               which itself stays the true interior boundary. Containment is
               handled separately by rectInsidePolygon against that same outline,
-              so thickening the perimeter here never eats into floor space. */}
-          <PerimeterWallLayer />
+              so thickening the perimeter here never eats into floor space.
+              Hidden while actively drawing a custom outline — until it's
+              finalized, storeOutline is just a throwaway placeholder rectangle
+              (initProject needs some valid outline immediately), not something
+              that should ever be visible. */}
+          {activeTool !== 'draw' && <PerimeterWallLayer />}
 
           <WallLayer />
           <EntranceLayer />
