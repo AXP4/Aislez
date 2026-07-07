@@ -8,7 +8,7 @@ import { computeAlignmentSnap, updateGuides, GUIDE_THRESHOLD_PX } from './Fixtur
 import type { AlignBox } from './FixtureLayer'
 import { WALL_COLOR } from '../../types'
 import type { Wall } from '../../types'
-import { isWallSideFlushWithOutline } from '../../utils/geometry'
+import { isWallSideFlushWithOutline, wallSideTouchesOtherWalls } from '../../utils/geometry'
 
 const MIN_WALL_SIZE = 0.05   // world units
 const ARROW_SIZE_PX = 10     // arrow glyph size, screen pixels
@@ -112,7 +112,7 @@ function makeArrowSceneFunc(side: HandleSide, s: number) {
 // loop entirely, which is what caused the drift and jumping before.
 
 function WallRect({ wall }: { wall: Wall }): React.ReactElement {
-  const { selectWall, moveWall, resizeWall, selectedWallId } = useCanvasStore()
+  const { selectWall, moveWall, resizeWall, selectedWallId, walls } = useCanvasStore()
   const { pixelsPerUnit: ppu, settings } = useProjectStore()
   const { gridMode, zoom } = useUiStore()
 
@@ -136,15 +136,22 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
   const ph = wall.height * ppu
   const restGeom: Geom = { x: wall.x, y: wall.y, w: wall.width, h: wall.height }
 
-  // A side flush against the store's perimeter draws no border of its own —
-  // the perimeter's inner outline is also suppressed there (see
-  // PerimeterWallLayer) so the two fills read as one continuous surface.
+  // A side flush against the store's perimeter, or touching/overlapping
+  // another wall, draws no border of its own — the other side suppresses its
+  // outline at the same join too (see PerimeterWallLayer, and the wall-vs-wall
+  // check below) so the fills read as one continuous surface instead of two
+  // separately-outlined shapes stacked on each other.
   const outline = settings?.storeOutline
+  const otherWalls = walls.filter((w) => w.id !== wall.id)
   const touches: Record<HandleSide, boolean> = {
-    left:   outline ? isWallSideFlushWithOutline(outline, wall.x, wall.y, wall.y + wall.height, false) : false,
-    right:  outline ? isWallSideFlushWithOutline(outline, wall.x + wall.width, wall.y, wall.y + wall.height, false) : false,
-    top:    outline ? isWallSideFlushWithOutline(outline, wall.y, wall.x, wall.x + wall.width, true) : false,
-    bottom: outline ? isWallSideFlushWithOutline(outline, wall.y + wall.height, wall.x, wall.x + wall.width, true) : false
+    left:   (outline ? isWallSideFlushWithOutline(outline, wall.x, wall.y, wall.y + wall.height, false) : false)
+      || wallSideTouchesOtherWalls(wall.x, wall.y, wall.y + wall.height, false, otherWalls),
+    right:  (outline ? isWallSideFlushWithOutline(outline, wall.x + wall.width, wall.y, wall.y + wall.height, false) : false)
+      || wallSideTouchesOtherWalls(wall.x + wall.width, wall.y, wall.y + wall.height, false, otherWalls),
+    top:    (outline ? isWallSideFlushWithOutline(outline, wall.y, wall.x, wall.x + wall.width, true) : false)
+      || wallSideTouchesOtherWalls(wall.y, wall.x, wall.x + wall.width, true, otherWalls),
+    bottom: (outline ? isWallSideFlushWithOutline(outline, wall.y + wall.height, wall.x, wall.x + wall.width, true) : false)
+      || wallSideTouchesOtherWalls(wall.y + wall.height, wall.x, wall.x + wall.width, true, otherWalls)
   }
 
   // Each border line overshoots its own corner slightly (in screen pixels,

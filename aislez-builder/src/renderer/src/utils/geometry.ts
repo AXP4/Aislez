@@ -309,3 +309,28 @@ export function isWallSideFlushWithOutline(
   }
   return false
 }
+
+/**
+ * True if a wall side (same shape as isWallSideFlushWithOutline) sits inside
+ * — or flush against — any other wall's rectangle. Suppresses a wall's own
+ * border wherever another wall's fill already covers that side, so two
+ * overlapping or adjacent walls read as one shape with a single outline
+ * around the outside, not two independently-outlined rectangles stacked on
+ * top of each other. Whole-side (not partial-interval) like the outline
+ * check above — a side touching another wall along only part of its length
+ * still has its whole border suppressed.
+ */
+export function wallSideTouchesOtherWalls(
+  sideConst: number, sideLo: number, sideHi: number, horizontal: boolean,
+  otherWalls: { x: number; y: number; width: number; height: number }[]
+): boolean {
+  for (const o of otherWalls) {
+    const oNear = horizontal ? o.y : o.x
+    const oFar  = horizontal ? o.y + o.height : o.x + o.width
+    if (sideConst < oNear - FLUSH_EPS || sideConst > oFar + FLUSH_EPS) continue
+    const oSpanLo = horizontal ? o.x : o.y
+    const oSpanHi = horizontal ? o.x + o.width : o.y + o.height
+    if (Math.min(sideHi, oSpanHi) > Math.max(sideLo, oSpanLo)) return true
+  }
+  return false
+}
