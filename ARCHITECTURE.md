@@ -42,9 +42,10 @@ Builder is the only application that currently exists and runs. Shopper, the .if
 | Store perimeter (custom/rectangle shape, outward adjustable thickness) | ✅ Built |
 | Interior walls (place, resize, rotate, outline styling) | ✅ Built |
 | Entrances (hosted on the perimeter outline) | ✅ Built |
-| Wall ↔ perimeter seam blending | ✅ Built |
+| Wall ↔ perimeter and wall ↔ wall seam blending | ✅ Built |
 | Fixture/wall containment (can't overlap walls or leave the store) | ✅ Built |
-| Floorplan image background layer | ⬜ Planned |
+| Perimeter sketch tool rejects self-intersecting outlines | ✅ Built |
+| Floorplan image background layer (upload, scale/reposition/rotate, opacity) | ✅ Built |
 | Save/load `.ifp` project file | ⬜ Planned |
 | CSV import + column mapping + auto-linking | ⬜ Planned |
 | Product list sidebar | ⬜ Planned |
@@ -176,7 +177,7 @@ aislez-builder/
 │       │   │   ├── ArrowLayer.tsx         # Arrow-extend buttons for chain rows
 │       │   │   ├── GridLayer.tsx          # Dot/line grid
 │       │   │   ├── Ruler.tsx              # Horizontal + vertical rulers
-│       │   │   └── BackgroundLayer.tsx    # [planned] Floorplan image underlay
+│       │   │   └── BackgroundLayer.tsx    # Floorplan reference photo — scale/reposition/rotate, renders bottommost
 │       │   ├── Sidebar/
 │       │   │   ├── FixtureLibrary.tsx     # Drag-to-canvas palette: Wall, Entrance, built-in + custom fixtures
 │       │   │   └── ProductList.tsx        # [planned] Linked product list
@@ -185,12 +186,12 @@ aislez-builder/
 │       │   └── Import/                    # [planned] CSV import flow
 │       ├── store/
 │       │   ├── canvasStore.ts       # Fixtures, walls, entrances, selection, undo/redo history, chain ops
-│       │   ├── projectStore.ts      # Project settings (unit, store outline, per-edge perimeter thickness, grid snap), custom fixture types, wall defaults
+│       │   ├── projectStore.ts      # Project settings (unit, store outline, per-edge perimeter thickness, grid snap, background image), custom fixture types, wall defaults
 │       │   └── uiStore.ts           # Zoom/pan/viewport, active tool, grid mode, Ctrl-held tracking, tooltip
 │       └── utils/
 │           ├── chain.ts             # Chain traversal, code parsing, direction logic
 │           ├── chainState.ts        # Chain state helpers
-│           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter flush detection
+│           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter/wall↔wall flush detection, self-intersection check
 │           └── locationCode.ts      # Location code utilities
 ├── electron.vite.config.ts
 ├── tsconfig.json / tsconfig.node.json / tsconfig.web.json  # Solution-style — typecheck via `npm run typecheck`, not `tsc --noEmit`
@@ -219,10 +220,13 @@ aislez-builder/
 ### Key Logic
 
 **Store perimeter vs. interior walls — two distinct concepts**
-`storeOutline` (a closed, axis-aligned polygon in `projectStore`) is the *only* thing that defines the interior boundary — it's what `rectInsidePolygon` checks fixtures and walls against, and it never changes shape when perimeter thickness changes. The perimeter is rendered as a border band that grows **outward only** from that polygon, by a thickness that's adjustable per edge (hold-drag the handle on a selected side — deliberately built on raw `window` mouse listeners rather than Konva's own drag system, so it can never get stuck following the cursor after release — or type a value into the toolbar's PERIMETER panel). Interior walls are a completely separate `Wall` entity — placed from the sidebar, always solid, real footprint that blocks fixture placement. The two are visually unified where they touch: a wall side flush against the perimeter suppresses its own border and the perimeter's inner border on that stretch, with a same-color patch to hide the antialiasing seam that would otherwise show between two separately-rendered fills of the same color.
+`storeOutline` (a closed, axis-aligned polygon in `projectStore`) is the *only* thing that defines the interior boundary — it's what `rectInsidePolygon` checks fixtures and walls against, and it never changes shape when perimeter thickness changes. The perimeter is rendered as a border band that grows **outward only** from that polygon, by a thickness that's adjustable per edge (hold-drag the handle on a selected side — deliberately built on raw `window` mouse listeners rather than Konva's own drag system, so it can never get stuck following the cursor after release — or type a value into the toolbar's PERIMETER panel). The sketch tool that draws `storeOutline` (`PerimeterDrawLayer.tsx`, `geometry.ts`'s `wouldSegmentSelfIntersect`) rejects any new segment that would retrace an earlier one (same line, overlapping range) or cross a non-adjacent one — the preview line and length label turn red and the click/Enter is silently ignored, so a hand-drawn outline can never end up self-intersecting. Interior walls are a completely separate `Wall` entity — placed from the sidebar, always solid, real footprint that blocks fixture placement. Walls are visually unified wherever they touch *anything* — the perimeter (`isWallSideFlushWithOutline`) or another wall (`wallSideTouchesOtherWalls`): a side touching either suppresses its own border, and on the perimeter side the perimeter's inner border is suppressed too, with a same-color patch to hide the antialiasing seam that would otherwise show between two separately-rendered fills of the same color. The wall-vs-wall check is whole-side (not partial-interval) — a side touching another wall along only part of its length loses its border for the whole side, a deliberate simplification.
 
 **Entrances are hosted objects, not free-standing**
 An `Entrance` doesn't have its own x/y — its geometry is entirely derived from `edgeIndex` (which storeOutline edge it's on) plus `offset`/`width` along that edge. It can only slide or resize along its host edge. Dropping the sidebar item snaps to whichever outline edge is nearest, within a threshold.
+
+**Floorplan background image — the outline defines scale, not the photo**
+A photo has no idea what "1 meter" means; `storeOutline` (drawn with real, typed measurements) does. So instead of a calibration tool, the retailer draws the outline first, then uploads a photo (`BackgroundImage` in `projectStore`, base64 + world-unit x/y/width/height/rotation/opacity) and drags a corner to stretch/reposition it until its own printed walls line up with the outline already on the canvas. Resize is corner-only and always uniform-scaled from the corner-to-corner diagonal distance, so it's impossible to stretch the image out of its own proportions once it's aligned. Rotation is 90°-increment only: `rotateBackgroundImage` swaps width/height and keeps the box's center fixed, while `BackgroundLayer.tsx` pre-swaps the *image's own* width/height and pivots it on its own center (via `offsetX`/`offsetY`) so the rotated content still exactly fills that same box — the resize handles always operate on the plain unrotated box and never need to know rotation happened. Renders bottommost (behind the grid and everything else); opacity goes to 0 (fully invisible).
 
 **Location Codes (manual, not auto-generated from position)**
 Auto-deriving a code from canvas X/Y was tried and de-scoped — retailers already have their own aisle/bay numbering, so pixel-position-based codes would conflict with real-world layouts. Instead:

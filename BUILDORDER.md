@@ -42,31 +42,32 @@
 
 ---
 
-## Phase 3 — Builder: Store Shape, Walls, Entrances & Canvas Tools
+## Phase 3 — Builder: Store Shape, Walls, Entrances & Canvas Tools ✅ Complete
 
-**Goal:** Retailer can define the store's outline (rectangle or hand-drawn), place interior walls and entrances, and (still planned) upload a floorplan image as a background reference.
+**Goal:** Retailer can define the store's outline (rectangle or hand-drawn), place interior walls and entrances, and upload a floorplan image as a background reference.
 
 > **Implementation note (July 2026):** This phase grew well past its original "draw a wall, connect segments into an outline" scope, based on founder feedback partway through (inspired by real architectural floor plans). The store's outer boundary and interior walls turned out to need genuinely different behavior, so they became two separate systems instead of one generic "wall" tool:
-> - **Perimeter** = the store's own outer boundary. Defined once (rectangle at project creation, or hand-drawn), then rendered as a border band whose thickness grows **outward only** and is adjustable per side — so retailers can match a real blueprint's wall thickness without it ever eating into usable floor space. The boundary itself (independent of thickness) is what fixtures and interior walls are blocked from crossing.
-> - **Interior walls** = retailer-placed dividers with real footprint that fixtures can't overlap. Dragged from the sidebar like a fixture, fully resizable/rotatable.
+> - **Perimeter** = the store's own outer boundary. Defined once (rectangle at project creation, or hand-drawn), then rendered as a border band whose thickness grows **outward only** and is adjustable per side — so retailers can match a real blueprint's wall thickness without it ever eating into usable floor space. The boundary itself (independent of thickness) is what fixtures and interior walls are blocked from crossing. The sketch tool also rejects any segment that would retrace or cross the outline drawn so far, so it's impossible to end up with a self-intersecting (figure-eight) boundary.
+> - **Interior walls** = retailer-placed dividers with real footprint that fixtures can't overlap. Dragged from the sidebar like a fixture, fully resizable/rotatable. Two walls that touch or overlap suppress their borders at the shared area too, so they read as one joined shape instead of two independently-outlined rectangles.
 > - **Entrances** = openings hosted on a specific perimeter edge (can only slide/resize along that edge, never become free-standing), dragged from the sidebar and snapped to the nearest outline edge.
 > - Where an interior wall butts up against the perimeter, both sides suppress their outline at the seam so the two read as one continuous wall instead of showing a joint.
+> - **Floorplan image** = the drawn storeOutline defines scale, not the photo — retailers draw their outline with real measurements first, then upload a photo and drag a corner to stretch/reposition it until its own printed walls line up with the outline already on the canvas. Corner handles are locked to the image's own aspect ratio (no distorting it out of scale), and it can be rotated in 90° increments for photos taken sideways.
 
 ### Steps
 1. ✅ Store shape picker in New Project dialog — Rectangle (enter width/height) or Custom (draw it after creating the project)
 2. ✅ Perimeter sketch tool (Draw mode): click to place each corner, snapped perpendicular to the last segment, type an exact length, close the loop by clicking back near the start
 3. ✅ Perimeter renders as a border band (inner edge = the true store boundary, outer edge = boundary + thickness); default thickness per side, individually adjustable by dragging a handle on a selected side or typing a value into the toolbar
-4. ✅ Interior wall placement: drag from sidebar, move/resize/rotate, duplicate, always-outlined styling, seam-blended where flush against the perimeter
+4. ✅ Interior wall placement: drag from sidebar, move/resize/rotate, duplicate, always-outlined styling, seam-blended where flush against the perimeter or another wall
 5. ✅ Entrances: drag from sidebar, snap to nearest perimeter edge, slide/resize along that edge, toolbar property panel
 6. ✅ Fixtures and interior walls blocked from overlapping a wall or leaving the store's perimeter boundary
-7. ⬜ Add floorplan image upload button
-8. ⬜ Render uploaded image as a background layer behind fixtures (non-interactive)
-9. ⬜ Image should be scaleable and repositionable
+7. ✅ Floorplan image upload button (toolbar, next to the grid toggle)
+8. ✅ Uploaded image renders as a background layer behind the grid/fixtures/walls
+9. ✅ Image is scaleable (aspect-locked corner drag), repositionable (drag), and rotatable (90° increments); opacity slider down to fully invisible, Remove button
 10. ✅ Arrow-extend: directional arrow buttons on a selected fixture extend the chain one unit; new member is auto-numbered
 
 > **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off only), Duplicate (Ctrl+D), full undo/redo history across fixtures/walls/entrances.
 
-**Test:** Create a store with a custom-drawn outline, adjust one side's thickness, place an interior wall flush against that side and confirm the seam disappears, add an entrance on another side, place fixtures and confirm they can't cross the perimeter or overlap the wall. Floorplan image upload is the one remaining ⬜ item before this phase is fully done.
+**Test:** Create a store with a custom-drawn outline, adjust one side's thickness, place an interior wall flush against that side and confirm the seam disappears, add an entrance on another side, place fixtures and confirm they can't cross the perimeter or overlap the wall. Upload a floorplan photo, drag it into alignment with the outline, rotate it 90°, and fade it to invisible with the opacity slider.
 
 ---
 
