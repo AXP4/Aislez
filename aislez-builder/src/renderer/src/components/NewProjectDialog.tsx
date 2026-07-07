@@ -70,7 +70,8 @@ export default function NewProjectDialog(): React.ReactElement {
       const outline = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap,
-        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length)
+        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length),
+        backgroundImage: null
       }
       initProject(settings)
     } else {
@@ -78,7 +79,8 @@ export default function NewProjectDialog(): React.ReactElement {
       const outline = [{ x: 0, y: 0 }, { x: dims.width, y: 0 }, { x: dims.width, y: dims.height }, { x: 0, y: dims.height }]
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: dims.width, storeHeight: dims.height, gridSnap,
-        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length)
+        storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length),
+        backgroundImage: null
       }
       initProject(settings)
       useUiStore.getState().setActiveTool('draw')

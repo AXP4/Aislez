@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import StoreCanvas from './components/Canvas/StoreCanvas'
 import FixtureLibrary from './components/Sidebar/FixtureLibrary'
 import NewProjectDialog from './components/NewProjectDialog'
@@ -52,9 +52,9 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti,
     walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall,
     entrances, selectedEntranceId, deleteEntrance, moveEntrance, resizeEntrance,
-    selectedPerimeterEdge
+    selectedPerimeterEdge, backgroundImageSelected, selectBackgroundImage
   } = useCanvasStore()
-  const { settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness } = useProjectStore()
+  const { settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness, setBackgroundImage, updateBackgroundImage, rotateBackgroundImage, clearBackgroundImage } = useProjectStore()
 
   const canUndo = past.length > 0
   const canRedo = future.length > 0
@@ -324,6 +324,25 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
     setPerimeterEdgeThickness(selectedPerimeterEdge, v)
   }
 
+  // ── Floorplan upload ─────────────────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleUploadFloorplan = (): void => fileInputRef.current?.click()
+
+  const handleFloorplanFile = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0]
+    e.target.value = ''  // lets the same file be re-selected later
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const img = new Image()
+      img.onload = () => setBackgroundImage(dataUrl, img.naturalWidth, img.naturalHeight)
+      img.src = dataUrl
+    }
+    reader.readAsDataURL(file)
+  }
+
   // ── Entrance inputs ────────────────────────────────────────────────────────
   const selectedEntrance = entrances.find(e => e.id === selectedEntranceId) ?? null
   const [entranceOffset, setEntranceOffset] = useState('')
@@ -386,6 +405,14 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
           style={gridMode !== 'off' ? { ...BTN_ACTIVE, minWidth: 78 } : { ...BTN, minWidth: 78 }}>
           {gridMode === 'dots' ? 'Grid: Dots' : gridMode === 'lines' ? 'Grid: Lines' : 'Grid: Off'}
         </button>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFloorplanFile} style={{ display: 'none' }} />
+        <IconBtn onClick={handleUploadFloorplan} title="Upload floorplan reference image">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+        </IconBtn>
       </div>
 
       {/* ── CENTER: fixture properties ── only when a fixture is selected ── */}
@@ -713,6 +740,38 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
               style={{ ...BTN, width: 58, padding: '0 6px', borderColor: WALL_COLOR + '99', fontVariantNumeric: 'tabular-nums' }}
             />
             <span style={{ fontSize: 10, color: '#7a95a8' }}>{unitLabel}</span>
+          </div>
+        )}
+        {/* ── Background image parameters ── only when the floorplan photo is selected ── */}
+        {backgroundImageSelected && settings?.backgroundImage && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            borderLeft: '2px solid #9090a8',
+            background: 'rgba(144,144,168,0.12)',
+            borderRadius: '0 4px 4px 0',
+            paddingLeft: 10, paddingRight: 6,
+            marginLeft: 2, height: 28
+          }}>
+            <span style={{ fontSize: 10, color: '#a0a0b8', fontWeight: 600, letterSpacing: '0.04em' }}>BACKGROUND</span>
+            {SEP}
+            <span style={{ fontSize: 11, color: '#a0a0b8' }}>Opacity</span>
+            <input
+              type="range" min={0} max={1} step={0.05} value={settings.backgroundImage.opacity}
+              onChange={e => updateBackgroundImage({ opacity: parseFloat(e.target.value) })}
+              style={{ width: 70 }}
+            />
+            {SEP}
+            <button onClick={() => rotateBackgroundImage()} title="Rotate 90°"
+              style={{ ...BTN, gap: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Rotate
+            </button>
+            <button onClick={() => { clearBackgroundImage(); selectBackgroundImage(false) }} style={BTN_DANGER}>
+              Remove
+            </button>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Unit, ProjectSettings, CustomFixtureType } from '../types'
+import type { Unit, ProjectSettings, CustomFixtureType, BackgroundImage } from '../types'
 
 let _cftCounter = 0
 
@@ -86,6 +86,13 @@ interface ProjectStore {
   updateWallDefaults: (updates: Partial<WallDefaults>) => void
   /** Adjust one edge's perimeter wall thickness (grows outward only) */
   setPerimeterEdgeThickness: (edgeIndex: number, thickness: number) => void
+  /** Set/replace the floorplan reference image; default placement covers the store's bounding box, aspect ratio preserved */
+  setBackgroundImage: (data: string, naturalWidth: number, naturalHeight: number) => void
+  /** Reposition/resize/fade the current background image */
+  updateBackgroundImage: (updates: Partial<Pick<BackgroundImage, 'x' | 'y' | 'width' | 'height' | 'opacity'>>) => void
+  /** Rotate the background image 90° clockwise, in place around its center */
+  rotateBackgroundImage: () => void
+  clearBackgroundImage: () => void
 }
 
 function derive(settings: ProjectSettings): { pixelsPerUnit: number; gridSizePx: number } {
@@ -148,5 +155,52 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const clamped = Math.round(Math.max(thickness, MIN_PERIMETER_THICKNESS) * 100) / 100
     const perimeterThickness = s.settings.perimeterThickness.map((t, i) => i === edgeIndex ? clamped : t)
     return { settings: { ...s.settings, perimeterThickness } }
+  }),
+
+  setBackgroundImage: (data, naturalWidth, naturalHeight) => set((s) => {
+    if (!s.settings) return s
+    // Default placement covers the store's bounding box (like CSS
+    // background-size: cover) so it starts close to useful — the retailer
+    // still drags a corner to match it precisely against the real outline.
+    const scale = Math.max(s.settings.storeWidth / naturalWidth, s.settings.storeHeight / naturalHeight)
+    const width = naturalWidth * scale
+    const height = naturalHeight * scale
+    const backgroundImage: BackgroundImage = {
+      data, naturalWidth, naturalHeight,
+      x: (s.settings.storeWidth - width) / 2,
+      y: (s.settings.storeHeight - height) / 2,
+      width, height, opacity: 1, rotation: 0
+    }
+    return { settings: { ...s.settings, backgroundImage } }
+  }),
+
+  rotateBackgroundImage: () => set((s) => {
+    const bg = s.settings?.backgroundImage
+    if (!s.settings || !bg) return s
+    // Swap width/height (a 90° turn swaps which dimension is "wide") while
+    // keeping the box's center fixed in place, so the image spins in place
+    // instead of jumping — same "rotate about center" feel as any image editor.
+    const cx = bg.x + bg.width / 2
+    const cy = bg.y + bg.height / 2
+    const width = bg.height
+    const height = bg.width
+    const backgroundImage: BackgroundImage = {
+      ...bg,
+      rotation: (bg.rotation + 90) % 360,
+      width, height,
+      x: Math.round((cx - width / 2) * 100) / 100,
+      y: Math.round((cy - height / 2) * 100) / 100
+    }
+    return { settings: { ...s.settings, backgroundImage } }
+  }),
+
+  updateBackgroundImage: (updates) => set((s) => {
+    if (!s.settings?.backgroundImage) return s
+    return { settings: { ...s.settings, backgroundImage: { ...s.settings.backgroundImage, ...updates } } }
+  }),
+
+  clearBackgroundImage: () => set((s) => {
+    if (!s.settings) return s
+    return { settings: { ...s.settings, backgroundImage: null } }
   })
 }))

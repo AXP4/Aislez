@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { Stage, Layer, Rect } from 'react-konva'
 import type Konva from 'konva'
 import GridLayer from './GridLayer'
+import BackgroundLayer from './BackgroundLayer'
 import FixtureLayer from './FixtureLayer'
 import WallLayer from './WallLayer'
 import EntranceLayer from './EntranceLayer'
@@ -166,7 +167,10 @@ export default function StoreCanvas(): React.ReactElement {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const s = useCanvasStore.getState()
-        if (s.selectedEntranceId) {
+        if (s.backgroundImageSelected) {
+          useProjectStore.getState().clearBackgroundImage()
+          s.selectBackgroundImage(false)
+        } else if (s.selectedEntranceId) {
           s.deleteEntrance(s.selectedEntranceId)
         } else if (s.selectedWallId) {
           deleteWall(s.selectedWallId)
@@ -354,6 +358,10 @@ export default function StoreCanvas(): React.ReactElement {
           onTap={handleStageClick}
           style={{ background: '#f8f9fb' }}
         >
+          {/* Floorplan reference photo — bottommost, so the grid and everything
+              else still render on top of it. */}
+          <BackgroundLayer />
+
           {gridMode !== 'off' && (() => {
             // Render only the visible viewport area, snapped to grid boundaries.
             // This keeps dot/line count bounded regardless of zoom or pan.

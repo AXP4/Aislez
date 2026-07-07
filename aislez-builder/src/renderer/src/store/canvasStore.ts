@@ -115,6 +115,10 @@ interface CanvasStore {
   selectedPerimeterEdge: number | null
   selectPerimeterEdge: (edgeIndex: number | null) => void
 
+  /** Whether the floorplan background image is selected (shows its resize/move handles) */
+  backgroundImageSelected: boolean
+  selectBackgroundImage: (selected: boolean) => void
+
   past:   HistoryEntry[]
   future: HistoryEntry[]
   undo: () => void
@@ -177,6 +181,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
   entrances: [],
   selectedEntranceId: null,
   selectedPerimeterEdge: null,
+  backgroundImageSelected: false,
 
   undo: () => set((s) => {
     if (s.past.length === 0) return s
@@ -192,7 +197,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       multiSelectedIds: [],
       selectedWallId: null,
       selectedEntranceId: null,
-      selectedPerimeterEdge: null
+      selectedPerimeterEdge: null,
+      backgroundImageSelected: false
     }
   }),
 
@@ -210,7 +216,8 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       multiSelectedIds: [],
       selectedWallId: null,
       selectedEntranceId: null,
-      selectedPerimeterEdge: null
+      selectedPerimeterEdge: null,
+      backgroundImageSelected: false
     }
   }),
 
@@ -701,21 +708,22 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     }
   }),
 
-  selectFixture: (id) => set({ selectedFixtureId: id, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null }),
+  selectFixture: (id) => set({ selectedFixtureId: id, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null, backgroundImageSelected: false }),
 
   selectChain: (id) => set((s) => ({
     selectedFixtureId:   null,
     selectedChainAnchor: findChainAnchorId(s.fixtures, id),
     multiSelectedIds:    [],
-    selectedPerimeterEdge: null
+    selectedPerimeterEdge: null,
+    backgroundImageSelected: false
   })),
 
-  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedWallId: null, selectedEntranceId: null, selectedPerimeterEdge: null }),
+  deselectAll: () => set({ selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedWallId: null, selectedEntranceId: null, selectedPerimeterEdge: null, backgroundImageSelected: false }),
 
   addWall: (x, y, width, height) => set((s) => ({
     ...withHistory(s),
     walls: [...s.walls, { id: generateWallId(), x, y, width, height, rotation: 0 }],
-    selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null
+    selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null, backgroundImageSelected: false
   })),
 
   moveWall: (id, x, y) => set((s) => ({
@@ -739,7 +747,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     selectedWallId: s.selectedWallId === id ? null : s.selectedWallId
   })),
 
-  selectWall: (id) => set({ selectedWallId: id, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null }),
+  selectWall: (id) => set({ selectedWallId: id, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedEntranceId: null, selectedPerimeterEdge: null, backgroundImageSelected: false }),
 
   addEntrance: (edgeIndex, offset, width) => set((s) => {
     const length = getEdgeLength(edgeIndex)
@@ -753,7 +761,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         offset: Math.round(clampedOffset * 100) / 100,
         width:  Math.round(clampedWidth * 100) / 100
       }],
-      selectedEntranceId: null, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null
+      selectedEntranceId: null, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null, backgroundImageSelected: false
     }
   }),
 
@@ -790,11 +798,16 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
     selectedEntranceId: s.selectedEntranceId === id ? null : s.selectedEntranceId
   })),
 
-  selectEntrance: (id) => set({ selectedEntranceId: id, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null }),
+  selectEntrance: (id) => set({ selectedEntranceId: id, selectedWallId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null, backgroundImageSelected: false }),
 
   selectPerimeterEdge: (edgeIndex) => set({
     selectedPerimeterEdge: edgeIndex,
-    selectedWallId: null, selectedEntranceId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: []
+    selectedWallId: null, selectedEntranceId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], backgroundImageSelected: false
+  }),
+
+  selectBackgroundImage: (selected) => set({
+    backgroundImageSelected: selected,
+    selectedWallId: null, selectedEntranceId: null, selectedFixtureId: null, selectedChainAnchor: null, multiSelectedIds: [], selectedPerimeterEdge: null
   }),
 
   scaleAllFixtures: (factor) => set((s) => ({

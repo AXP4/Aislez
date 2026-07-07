@@ -19,6 +19,30 @@ export interface ProjectSettings {
    * interior boundary used for fixture/wall containment.
    */
   perimeterThickness: number[]
+  /** Floorplan reference image, or null if none uploaded */
+  backgroundImage: BackgroundImage | null
+}
+
+/**
+ * A retailer-uploaded floorplan photo, positioned/scaled to match the
+ * already-drawn (correctly-scaled) storeOutline — the outline is the source
+ * of truth for scale, not the image. Purely a tracing reference; never
+ * affects containment or export.
+ */
+export interface BackgroundImage {
+  /** Base64 data URL (e.g. "data:image/png;base64,...") */
+  data: string
+  /** Native pixel dimensions of the source file, used to keep resize proportional */
+  naturalWidth: number
+  naturalHeight: number
+  /** Placement in world units */
+  x: number
+  y: number
+  width: number
+  height: number
+  opacity: number
+  /** 90° increments only: 0, 90, 180, or 270 */
+  rotation: number
 }
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
