@@ -5,6 +5,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useProjectStore } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import type { Entrance } from '../../types'
+import { getEdgeOutwardNormal } from '../../utils/geometry'
 import type { Point } from '../../utils/geometry'
 
 const MIN_ENTRANCE_WIDTH = 0.05  // world units
@@ -40,6 +41,7 @@ const distAt = (edge: EdgeUnit, p: Point): number => (p.x - edge.p1.x) * edge.ux
 function EntranceMarker({ entrance, outline }: { entrance: Entrance; outline: Point[] }): React.ReactElement | null {
   const { selectedEntranceId, selectEntrance, moveEntrance, resizeEntrance } = useCanvasStore()
   const { pixelsPerUnit: ppu } = useProjectStore()
+  const wallThickness = useProjectStore((s) => s.settings?.perimeterThickness[entrance.edgeIndex] ?? 0)
   const { zoom } = useUiStore()
 
   const lineRef    = useRef<Konva.Line>(null)
@@ -50,6 +52,7 @@ function EntranceMarker({ entrance, outline }: { entrance: Entrance; outline: Po
   const edge = edgeUnit(outline, entrance.edgeIndex)
   if (!edge) return null
 
+  const normal = getEdgeOutwardNormal(outline, entrance.edgeIndex)
   const isSelected = selectedEntranceId === entrance.id
   const horizontal = Math.abs(edge.ux) >= Math.abs(edge.uy)
 
@@ -62,11 +65,16 @@ function EntranceMarker({ entrance, outline }: { entrance: Entrance; outline: Po
   const applyGeom = useCallback((seg: Seg): void => {
     const a = pointAt(edge!, seg.offset)
     const b = pointAt(edge!, seg.offset + seg.width)
-    lineRef.current?.points([a.x * ppu, a.y * ppu, b.x * ppu, b.y * ppu])
+    const outerA = { x: a.x + normal.x * wallThickness, y: a.y + normal.y * wallThickness }
+    const outerB = { x: b.x + normal.x * wallThickness, y: b.y + normal.y * wallThickness }
+    lineRef.current?.points([
+      a.x * ppu, a.y * ppu, b.x * ppu, b.y * ppu,
+      outerB.x * ppu, outerB.y * ppu, outerA.x * ppu, outerA.y * ppu
+    ])
     handleARef.current?.position({ x: a.x * ppu, y: a.y * ppu })
     handleBRef.current?.position({ x: b.x * ppu, y: b.y * ppu })
     lineRef.current?.getLayer()?.batchDraw()
-  }, [edge, ppu])
+  }, [edge, ppu, normal.x, normal.y, wallThickness])
 
   // ── Slide: drag the body along the edge's own axis ──────────────────────────
 
@@ -150,21 +158,27 @@ function EntranceMarker({ entrance, outline }: { entrance: Entrance; outline: Po
 
   const a = pointAt(edge, entrance.offset)
   const b = pointAt(edge, entrance.offset + entrance.width)
+  const outerA = { x: a.x + normal.x * wallThickness, y: a.y + normal.y * wallThickness }
+  const outerB = { x: b.x + normal.x * wallThickness, y: b.y + normal.y * wallThickness }
   const hitSize = HANDLE_HIT_PX / zoom
-  const lineWidth = (isSelected ? 5 : 4) / zoom
 
   return (
     <>
+      {/* Fills the full wall thickness at this edge, so the opening reads as a
+          break in the wall rather than a marker line sitting on top of it. */}
       <Line
         ref={lineRef}
-        points={[a.x * ppu, a.y * ppu, b.x * ppu, b.y * ppu]}
-        stroke={ENTRANCE_COLOR}
-        strokeWidth={lineWidth}
+        points={[
+          a.x * ppu, a.y * ppu, b.x * ppu, b.y * ppu,
+          outerB.x * ppu, outerB.y * ppu, outerA.x * ppu, outerA.y * ppu
+        ]}
+        closed
+        fill={ENTRANCE_COLOR}
+        stroke={isSelected ? ENTRANCE_COLOR : undefined}
+        strokeWidth={isSelected ? 2 / zoom : 0}
         shadowColor={isSelected ? ENTRANCE_COLOR : 'transparent'}
         shadowBlur={isSelected ? 8 / zoom : 0}
         shadowOpacity={0.6}
-        lineCap="round"
-        hitStrokeWidth={hitSize}
         onClick={(e) => { e.cancelBubble = true; selectEntrance(entrance.id) }}
         onTap={(e) => { e.cancelBubble = true; selectEntrance(entrance.id) }}
         onMouseEnter={(e) => setCursor(e, 'move')}
