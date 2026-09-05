@@ -154,16 +154,31 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
       || wallSideTouchesOtherWalls(wall.y + wall.height, wall.x, wall.x + wall.width, true, otherWalls)
   }
 
-  // Each border line overshoots its own corner slightly (in screen pixels,
-  // so it stays a constant size regardless of zoom) — otherwise two adjacent
-  // walls' independently-stroked borders can leave a hairline antialiasing
-  // gap at the shared corner where neither line's flat end-cap quite reaches.
-  const borderPoints = (side: HandleSide, w: number, h: number, ext: number): number[] => {
+  // A border line overshoots past a given corner only when the side sharing
+  // that corner is itself suppressed (touching the perimeter or another
+  // wall) — that's when there's no line from this wall meeting it there, so
+  // the overshoot bridges a hairline antialiasing gap against the
+  // neighboring geometry's own rendering. When both sides at a corner are
+  // visible, they meet exactly at the corner with no overshoot; overshooting
+  // there too would just double-stroke a small square at every corner.
+  const cornerExtents = (side: HandleSide, ext: number): [number, number] => {
     switch (side) {
-      case 'left':   return [0, -ext, 0, h + ext]
-      case 'right':  return [w, -ext, w, h + ext]
-      case 'top':    return [-ext, 0, w + ext, 0]
-      case 'bottom': return [-ext, h, w + ext, h]
+      case 'left':
+      case 'right':
+        return [touches.top ? ext : 0, touches.bottom ? ext : 0]
+      case 'top':
+      case 'bottom':
+        return [touches.left ? ext : 0, touches.right ? ext : 0]
+    }
+  }
+
+  const borderPoints = (side: HandleSide, w: number, h: number, ext: number): number[] => {
+    const [extStart, extEnd] = cornerExtents(side, ext)
+    switch (side) {
+      case 'left':   return [0, -extStart, 0, h + extEnd]
+      case 'right':  return [w, -extStart, w, h + extEnd]
+      case 'top':    return [-extStart, 0, w + extEnd, 0]
+      case 'bottom': return [-extStart, h, w + extEnd, h]
     }
   }
 
