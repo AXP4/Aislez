@@ -189,6 +189,8 @@ function EntranceMarker({ entrance, outline }: { entrance: Entrance; outline: Po
         x={a.x * ppu} y={a.y * ppu}
         draggable
         dragBoundFunc={bodyDragBoundFunc}
+        onClick={(e) => { e.cancelBubble = true; selectEntrance(entrance.id) }}
+        onTap={(e) => { e.cancelBubble = true; selectEntrance(entrance.id) }}
         onDragStart={handleBodyDragStart}
         onDragMove={handleBodyDragMove}
         onDragEnd={handleBodyDragEnd}
