@@ -198,6 +198,20 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     }
   }
 
+  // Grows the wall's fill by a hairline on any side flush against another
+  // wall — two independently-antialiased same-color fills that only just
+  // touch still leave a faint background-colored seam at the join (the same
+  // problem PerimeterWallLayer's own patch solves for wall-vs-perimeter).
+  // `x`/`y` are the rect's own pre-patch offset (0 except mid-resize, where a
+  // left/top-edge drag shifts the rect within the group).
+  const fillPatch = (x: number, y: number, w: number, h: number, patch: number): { x: number; y: number; width: number; height: number } => {
+    const l = touches.left ? patch : 0
+    const r = touches.right ? patch : 0
+    const t = touches.top ? patch : 0
+    const b = touches.bottom ? patch : 0
+    return { x: x - l, y: y - t, width: w + l + r, height: h + t + b }
+  }
+
   // ── Move: group drag ────────────────────────────────────────────────────────
 
   // dragBoundFunc works in absolute (stage-container) pixels: abs = content × zoom + pan.
@@ -268,13 +282,13 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     const w = geom.w * ppu
     const h = geom.h * ppu
     const ext = 1.5 / useUiStore.getState().zoom
-    rectRef.current?.setAttrs({ x, y, width: w, height: h })
+    rectRef.current?.setAttrs(fillPatch(x, y, w, h, ext))
     for (const side of SIDES) {
       handleRefs.current[side]?.position(handleCentre(side, geom, origin, ppu))
       borderRefs.current[side]?.setAttrs({ x, y, points: borderPoints(side, w, h, ext) })
     }
     groupRef.current?.getLayer()?.batchDraw()
-  }, [ppu])
+  }, [ppu, touches.left, touches.right, touches.top, touches.bottom])
 
   const handleResizeStart = useCallback((e: Konva.KonvaEventObject<DragEvent>): void => {
     e.cancelBubble = true
@@ -361,13 +375,13 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     // re-applied by react-konva.
     groupRef.current?.position({ x: g.x * ppu, y: g.y * ppu })
     const ext = 1.5 / useUiStore.getState().zoom
-    rectRef.current?.setAttrs({ x: 0, y: 0, width: g.w * ppu, height: g.h * ppu })
+    rectRef.current?.setAttrs(fillPatch(0, 0, g.w * ppu, g.h * ppu, ext))
     for (const side of SIDES) {
       handleRefs.current[side]?.position(handleCentre(side, g, g, ppu))
       borderRefs.current[side]?.setAttrs({ x: 0, y: 0, points: borderPoints(side, g.w * ppu, g.h * ppu, ext) })
     }
     resizeWall(wall.id, g.x, g.y, g.w, g.h)
-  }, [wall.id, ppu, resizeWall])
+  }, [wall.id, ppu, resizeWall, touches.left, touches.right, touches.top, touches.bottom])
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -393,13 +407,13 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     >
       {/* Interior walls take real floor space, unlike the perimeter (which is
           just a zero-footprint reference line) — so thickness needs to read
-          clearly as solid, occupied space rather than a thin outline. */}
+          clearly as solid, occupied space rather than a thin outline. The
+          fill is grown by a hairline on any side flush against another wall
+          — see fillPatch — to bridge the antialiasing seam that would
+          otherwise show between two separately-rendered same-color fills. */}
       <Rect
         ref={rectRef}
-        x={0}
-        y={0}
-        width={pw}
-        height={ph}
+        {...fillPatch(0, 0, pw, ph, 1.5 / zoom)}
         fill={WALL_COLOR}
         shadowColor={isSelected ? WALL_COLOR : 'transparent'}
         shadowBlur={isSelected ? 8 / zoom : 0}
