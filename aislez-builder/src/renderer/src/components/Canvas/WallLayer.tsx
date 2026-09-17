@@ -239,8 +239,9 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
       // behaviour as fixture dragging), falling back to the plain grid when
       // nothing's close enough.
       const { gridSizePx: gsz } = useProjectStore.getState()
-      const otherWalls = useCanvasStore.getState().walls.filter(w => w.id !== wall.id)
-      const snapped = computeSnap(pos.x, pos.y, wall.width * ppu, wall.height * ppu, otherWalls, ppu, gsz, z, panX, panY)
+      const { fixtures, walls } = useCanvasStore.getState()
+      const others: AlignBox[] = [...fixtures, ...walls.filter(w => w.id !== wall.id)]
+      const snapped = computeSnap(pos.x, pos.y, wall.width * ppu, wall.height * ppu, others, ppu, gsz, z, panX, panY)
       worldX = (snapped.x - panX) / (z * ppu)
       worldY = (snapped.y - panY) / (z * ppu)
     }

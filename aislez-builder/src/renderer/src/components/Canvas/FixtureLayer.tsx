@@ -432,7 +432,8 @@ function FixtureShape({
   const dragBoundFunc = useCallback(
     (pos: { x: number; y: number }): { x: number; y: number } => {
       const { zoom, panX, panY } = useUiStore.getState()
-      const others = useCanvasStore.getState().fixtures.filter(f => f.id !== fixture.id)
+      const state = useCanvasStore.getState()
+      const others: AlignBox[] = [...state.fixtures.filter(f => f.id !== fixture.id), ...state.walls]
       if (gridMode !== 'off') {
         return computeSnap(pos.x, pos.y, pw, ph, others, pixelsPerUnit, gridSizePx, zoom, panX, panY)
       }
@@ -695,7 +696,7 @@ function ChainGroup({ duplicateCodes, multiSet }: { duplicateCodes: Set<string>;
       const chainFixtures = getChainMembers(state.fixtures, selectedChainAnchor)
       if (chainFixtures.length === 0) return pos
       const chainIdSet = new Set(chainFixtures.map(f => f.id))
-      const others = state.fixtures.filter(f => !chainIdSet.has(f.id))
+      const others: AlignBox[] = [...state.fixtures.filter(f => !chainIdSet.has(f.id)), ...state.walls]
 
       if (gridMode === 'off') {
         // Free drag — align chain bounding box against other fixtures
@@ -920,7 +921,8 @@ function MultiSelectGroup(): React.ReactElement | null {
     (pos: { x: number; y: number }): { x: number; y: number } => {
       if (gridMode === 'off') return pos
       const { zoom, panX, panY } = useUiStore.getState()
-      const others = useCanvasStore.getState().fixtures.filter(f => !multiSet.has(f.id))
+      const state = useCanvasStore.getState()
+      const others: AlignBox[] = [...state.fixtures.filter(f => !multiSet.has(f.id)), ...state.walls]
       const anchorOffsetX = anchor.x * pixelsPerUnit * zoom
       const anchorOffsetY = anchor.y * pixelsPerUnit * zoom
       const snapped = computeSnap(
