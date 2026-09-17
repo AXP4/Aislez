@@ -124,11 +124,13 @@ function hitsWallOrLeavesPerimeter(rect: { x: number; y: number; width: number; 
 /**
  * Corner-to-corner snapping in screen space.
  * pos is stage-container pixels. Returns stage-container pixels.
+ * `others` only needs position/size (fixtures use it against other fixtures,
+ * walls against other walls — see WallLayer.tsx).
  */
-function computeSnap(
+export function computeSnap(
   posX: number, posY: number,
   pw: number, ph: number,
-  others: Fixture[],
+  others: AlignBox[],
   pixelsPerUnit: number,
   gridSizePx: number,
   zoom: number,

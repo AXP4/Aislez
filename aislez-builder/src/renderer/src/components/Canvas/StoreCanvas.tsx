@@ -213,11 +213,17 @@ export default function StoreCanvas(): React.ReactElement {
         const rawPxY = contentY - ph / 2
         const snappedPxX = gridMode === 'off' ? rawPxX : Math.round(rawPxX / gridSizePx) * gridSizePx
         const snappedPxY = gridMode === 'off' ? rawPxY : Math.round(rawPxY / gridSizePx) * gridSizePx
-        addWall(
-          Math.round(snappedPxX / pixelsPerUnit * 100) / 100,
-          Math.round(snappedPxY / pixelsPerUnit * 100) / 100,
-          defaultW, defaultH
-        )
+        const wallX = Math.round(snappedPxX / pixelsPerUnit * 100) / 100
+        const wallY = Math.round(snappedPxY / pixelsPerUnit * 100) / 100
+
+        // Can't drop a wall onto a fixture, another wall, or outside the perimeter
+        const newWallRect = { x: wallX, y: wallY, width: defaultW, height: defaultH }
+        const { walls, fixtures } = useCanvasStore.getState()
+        if (walls.some((w) => rectsOverlap(newWallRect, w))) return
+        if (fixtures.some((f) => rectsOverlap(newWallRect, f))) return
+        if (!rectInsidePolygon(newWallRect, settings.storeOutline)) return
+
+        addWall(wallX, wallY, defaultW, defaultH)
         return
       }
 

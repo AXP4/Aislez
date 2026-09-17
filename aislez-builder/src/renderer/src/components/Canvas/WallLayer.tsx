@@ -4,15 +4,27 @@ import type Konva from 'konva'
 import { useCanvasStore } from '../../store/canvasStore'
 import { useProjectStore } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
-import { computeAlignmentSnap, updateGuides, GUIDE_THRESHOLD_PX } from './FixtureLayer'
+import { computeAlignmentSnap, computeSnap, updateGuides, GUIDE_THRESHOLD_PX } from './FixtureLayer'
 import type { AlignBox } from './FixtureLayer'
 import { WALL_COLOR } from '../../types'
 import type { Wall } from '../../types'
-import { isWallSideFlushWithOutline, wallSideTouchesOtherWalls } from '../../utils/geometry'
+import { isWallSideFlushWithOutline, wallSideTouchesOtherWalls, rectsOverlap, rectInsidePolygon } from '../../utils/geometry'
 
 const MIN_WALL_SIZE = 0.05   // world units
 const ARROW_SIZE_PX = 10     // arrow glyph size, screen pixels
 const HANDLE_HIT_PX = 26     // square hit area around each handle, screen pixels
+
+/** An interior wall can't overlap another wall or a fixture, or leave the store's perimeter (world units) */
+function wallPlacementBlocked(
+  rect: { x: number; y: number; width: number; height: number },
+  excludeWallId: string
+): boolean {
+  const { walls, fixtures } = useCanvasStore.getState()
+  if (walls.some((w) => w.id !== excludeWallId && rectsOverlap(rect, w))) return true
+  if (fixtures.some((f) => rectsOverlap(rect, f))) return true
+  const outline = useProjectStore.getState().settings?.storeOutline
+  return outline ? !rectInsidePolygon(rect, outline) : false
+}
 
 type HandleSide = 'left' | 'right' | 'top' | 'bottom'
 const SIDES: HandleSide[] = ['left', 'right', 'top', 'bottom']
@@ -128,6 +140,10 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
   const resizeStart = useRef<Geom | null>(null)
   /** Live geometry during a resize drag, committed on drag end */
   const resizeGeom = useRef<Geom | null>(null)
+  /** Last known-valid geometry during a resize drag — growth that would hit something sticks here instead of overshooting */
+  const lastValidResizeGeom = useRef<Geom | null>(null)
+  /** Last known-valid position (world units) during a move drag — sliding into something sticks here instead of passing through */
+  const lastValidPos = useRef<{ x: number; y: number }>({ x: wall.x, y: wall.y })
 
   const isSelected = selectedWallId === wall.id
   const px = wall.x * ppu
@@ -184,38 +200,58 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
 
   // ── Move: group drag ────────────────────────────────────────────────────────
 
-  // dragBoundFunc works in absolute (stage-container) pixels: abs = content × zoom + pan
+  // dragBoundFunc works in absolute (stage-container) pixels: abs = content × zoom + pan.
+  // A candidate position that would overlap another wall/fixture or leave the
+  // perimeter is rejected on the spot — the wall sticks at the last valid spot
+  // instead of passing through and only snapping back once the drag ends.
   const dragBoundFunc = useCallback((pos: { x: number; y: number }) => {
     const { panX, panY, zoom: z } = useUiStore.getState()
+    let worldX: number, worldY: number, guideY: number | null = null, guideX: number | null = null
 
     if (gridMode === 'off') {
       // Free drag — snap to alignment guides against other walls and fixtures,
       // same behaviour as fixture dragging.
       const { fixtures, walls } = useCanvasStore.getState()
       const others: AlignBox[] = [...fixtures, ...walls.filter(w => w.id !== wall.id)]
-      const worldX = (pos.x - panX) / (z * ppu)
-      const worldY = (pos.y - panY) / (z * ppu)
-      const result = computeAlignmentSnap(worldX, worldY, wall.width, wall.height, others, z, ppu)
-      updateGuides(result.guideY, result.guideX)
-      return { x: result.x * ppu * z + panX, y: result.y * ppu * z + panY }
+      const rawX = (pos.x - panX) / (z * ppu)
+      const rawY = (pos.y - panY) / (z * ppu)
+      const result = computeAlignmentSnap(rawX, rawY, wall.width, wall.height, others, z, ppu)
+      worldX = result.x
+      worldY = result.y
+      guideY = result.guideY
+      guideX = result.guideX
+    } else {
+      // Grid drag — corner-to-corner magnet against other walls first (same
+      // behaviour as fixture dragging), falling back to the plain grid when
+      // nothing's close enough.
+      const { gridSizePx: gsz } = useProjectStore.getState()
+      const otherWalls = useCanvasStore.getState().walls.filter(w => w.id !== wall.id)
+      const snapped = computeSnap(pos.x, pos.y, wall.width * ppu, wall.height * ppu, otherWalls, ppu, gsz, z, panX, panY)
+      worldX = (snapped.x - panX) / (z * ppu)
+      worldY = (snapped.y - panY) / (z * ppu)
     }
 
-    const { gridSizePx: gsz } = useProjectStore.getState()
-    const step = gsz * z
-    return {
-      x: Math.round((pos.x - panX) / step) * step + panX,
-      y: Math.round((pos.y - panY) / step) * step + panY
+    if (wallPlacementBlocked({ x: worldX, y: worldY, width: wall.width, height: wall.height }, wall.id)) {
+      const last = lastValidPos.current
+      return { x: last.x * ppu * z + panX, y: last.y * ppu * z + panY }
     }
+
+    lastValidPos.current = { x: worldX, y: worldY }
+    updateGuides(guideY, guideX)
+    return { x: worldX * ppu * z + panX, y: worldY * ppu * z + panY }
   }, [gridMode, wall.id, wall.width, wall.height, ppu])
 
   const handleGroupDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>): void => {
     if (e.target !== groupRef.current) return  // bubbled from a resize handle
+    lastValidPos.current = { x: wall.x, y: wall.y }
     if (useCanvasStore.getState().selectedWallId !== wall.id) selectWall(wall.id)
-  }, [wall.id, selectWall])
+  }, [wall.id, wall.x, wall.y, selectWall])
 
   const handleGroupDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>): void => {
     if (e.target !== groupRef.current) return  // bubbled from a resize handle
     updateGuides(null, null)
+    // dragBoundFunc already guaranteed every position along the way was valid,
+    // so the node's current position can be committed as-is.
     const node = e.target
     const wx = round2(node.x() / ppu)
     const wy = round2(node.y() / ppu)
@@ -245,6 +281,7 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     updateGuides(null, null)
     resizeStart.current = { x: wall.x, y: wall.y, w: wall.width, h: wall.height }
     resizeGeom.current = { ...resizeStart.current }
+    lastValidResizeGeom.current = { ...resizeStart.current }
   }, [wall.x, wall.y, wall.width, wall.height])
 
   const handleResizeMove = useCallback((side: HandleSide, e: Konva.KonvaEventObject<DragEvent>): void => {
@@ -296,10 +333,17 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
       g.y = round2(edge)
       g.h = round2(bottom - edge)
     }
-    resizeGeom.current = g
+    // A growth step that would overlap another wall/fixture or leave the
+    // perimeter is rejected on the spot — the edge sticks at the last valid
+    // size instead of overshooting and only snapping back once the drag ends.
+    const target = wallPlacementBlocked({ x: g.x, y: g.y, width: g.w, height: g.h }, wall.id)
+      ? lastValidResizeGeom.current!
+      : g
+    if (target === g) lastValidResizeGeom.current = g
+    resizeGeom.current = target
     // Repositions the dragged handle too — this is what enforces the axis
     // lock and snapping (standard Konva pattern: override position in dragmove)
-    applyGeom(g, start)
+    applyGeom(target, start)
   }, [ppu, applyGeom, wall.id])
 
   const handleResizeEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>): void => {
@@ -308,10 +352,13 @@ function WallRect({ wall }: { wall: Wall }): React.ReactElement {
     const g = resizeGeom.current
     resizeStart.current = null
     resizeGeom.current = null
+    lastValidResizeGeom.current = null
     if (!g) return
-    // Normalize nodes to the at-rest layout (group at wall origin, rect at 0,0)
-    // BEFORE committing, so node state matches what React will render — props
-    // that happen to be unchanged won't be re-applied by react-konva.
+    // dragmove already guaranteed this geometry was valid, so it can be
+    // committed as-is. Normalize nodes to the at-rest layout (group at wall
+    // origin, rect at 0,0) BEFORE committing, so node state matches what
+    // React will render — props that happen to be unchanged won't be
+    // re-applied by react-konva.
     groupRef.current?.position({ x: g.x * ppu, y: g.y * ppu })
     const ext = 1.5 / useUiStore.getState().zoom
     rectRef.current?.setAttrs({ x: 0, y: 0, width: g.w * ppu, height: g.h * ppu })
