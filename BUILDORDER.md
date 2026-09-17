@@ -73,19 +73,21 @@
 
 ---
 
-## Phase 4 — Builder: Save and Load
+## Phase 4 — Builder: Save and Load ✅ Complete
 
 **Goal:** Retailer can save their work as a .ifp file and reopen it later.
 
+> **Implementation note (September 2026):** File I/O lives in the Electron main process (`ipcMain.handle('project:save'/'project:open')` in `src/main/index.ts`, using native save/open dialogs), not a separate `fileManager.js` — the renderer collects/parses the JSON (`utils/projectFile.ts`'s `serializeProject`/`hydrateProject`) and calls `utils/fileActions.ts`'s `saveProject`/`openProject`, which invoke those IPC handlers. `ProjectFile` (`types/index.ts`) was rewritten to match the real `Wall`/`Entrance`/`ProjectSettings` shapes — the original sketch predated all of Phase 3 and only had `store: {name,width,height}` + fixtures. Ctrl+S resaves straight to the last-used path (tracked in `projectStore.currentFilePath`, reset to null on `initProject`); only the first save (or a file that's never been saved) prompts a dialog. Loading clears undo/redo history and selection (`canvasStore.loadCanvas`) since neither makes sense against a different project's state.
+
 ### Steps
-1. canvasStore/projectStore/uiStore already exist from earlier phases — CSV/product data will need a new store (or an extension of an existing one) once Phase 5 starts
-2. Write fileManager.js in Electron main process
-   - saveProject(): serialize all store state → write as .ifp file (JSON)
-   - loadProject(): read .ifp file → parse → hydrate all stores
-3. Add Save button to toolbar (Ctrl+S shortcut)
-4. Add Open button to toolbar
-5. On app launch: show a start screen — "New Project" or "Open Project"
-6. Test that reopening a .ifp file restores the exact canvas state
+1. ✅ canvasStore/projectStore/uiStore already exist from earlier phases — CSV/product data will need a new store (or an extension of an existing one) once Phase 5 starts
+2. ✅ File save/load IPC handlers in the Electron main process
+   - `project:save`: renderer serializes state to JSON → main shows a save dialog (skipped on resave) → writes the `.ifp` file
+   - `project:open`: main shows an open dialog → reads the file → renderer validates and hydrates all stores
+3. ✅ Add Save button to toolbar (Ctrl+S shortcut, plus File menu)
+4. ✅ Add Open button to toolbar (Ctrl+O shortcut, plus File menu)
+5. ✅ On app launch: show a start screen — "New Project" or "Open Project" (`StartScreen.tsx`)
+6. ✅ Test that reopening a .ifp file restores the exact canvas state — founder-verified: built a store using every feature, saved, reopened, everything present
 
 **Test:** Build a small store, save as .ifp, close the app, reopen the file, everything is restored.
 

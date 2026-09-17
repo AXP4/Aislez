@@ -13,7 +13,7 @@ Aislez has two independent applications that communicate through a single file f
 │                                 │
 │  Canvas → Fixtures → Products   │
 │                                 │
-│  Save: project.ifp   [planned]  │
+│  Save: project.ifp              │
 │  Export: datapackage.json [planned] │
 └──────────────┬──────────────────┘
                │ datapackage.json
@@ -28,7 +28,7 @@ Aislez has two independent applications that communicate through a single file f
 └─────────────────────────────────┘
 ```
 
-Builder is the only application that currently exists and runs. Shopper, the .ifp save/load format, and the exported JSON data package are all still design targets — see [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
+Builder is the only application that currently exists and runs. Shopper and the exported JSON data package are still design targets; the .ifp save/load format is built — see [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
 
 ---
 
@@ -46,7 +46,7 @@ Builder is the only application that currently exists and runs. Shopper, the .if
 | Fixture/wall containment (can't overlap walls or leave the store) | ✅ Built |
 | Perimeter sketch tool rejects self-intersecting outlines | ✅ Built |
 | Floorplan image background layer (upload, scale/reposition/rotate, opacity) | ✅ Built |
-| Save/load `.ifp` project file | ⬜ Planned |
+| Save/load `.ifp` project file, launch start screen | ✅ Built |
 | CSV import + column mapping + auto-linking | ⬜ Planned |
 | Product list sidebar | ⬜ Planned |
 | Export JSON data package | ⬜ Planned |
@@ -56,61 +56,45 @@ The rest of this document describes the built parts as they actually work, and t
 
 ---
 
-## File Formats — Planned
+## File Formats
 
-Neither format below is wired up yet: `types/index.ts` sketches out the shapes (`ProjectFile`, `DataPackage`, `Product`), but there is no save, load, import, or export code anywhere in the app. This is the design target for Phases 4–6.
+`.ifp` is built (Phase 4); the JSON data package is still planned (Phase 6) — `types/index.ts` sketches its shape (`DataPackage`, `Product`), but there is no export code anywhere in the app yet.
 
-### .ifp Project File (Builder will save this)
-The full editable project. JSON under the hood, renamed .ifp.
+### .ifp Project File (Builder saves/loads this — built)
+The full editable project. JSON under the hood, renamed .ifp. `ProjectFile` in `types/index.ts` mirrors real store state exactly (world units in meters/feet, not pixels) rather than the flat placeholder this section used to show:
 
 ```json
 {
   "version": "1.0",
-  "store": {
+  "settings": {
     "name": "Mock Walmart - Section B",
-    "width": 1200,
-    "height": 800,
-    "backgroundImage": "base64_encoded_floorplan_or_null"
+    "unit": "meters",
+    "storeWidth": 30,
+    "storeHeight": 20,
+    "gridSnap": 1,
+    "storeOutline": [{ "x": 0, "y": 0 }, { "x": 30, "y": 0 }, { "x": 30, "y": 20 }, { "x": 0, "y": 20 }],
+    "perimeterThickness": [0.2, 0.2, 0.2, 0.2],
+    "backgroundImage": null
   },
+  "customFixtureTypes": [
+    { "id": "builtin_0", "name": "Shelf", "width": 1.2, "height": 0.5, "color": "#4A90D9", "abbrev": "SH" }
+  ],
+  "wallDefaults": { "width": 3, "height": 0.2 },
   "fixtures": [
-    {
-      "id": "fixture_001",
-      "type": "shelf",
-      "locationCode": "B3-1",
-      "x": 120,
-      "y": 200,
-      "width": 80,
-      "height": 20,
-      "rotation": 0,
-      "label": "B3-1"
-    }
+    { "id": "fixture_001", "type": "shelf", "locationCode": "B3-1", "x": 2, "y": 3.3, "width": 1.2, "height": 0.5, "rotation": 0, "label": "B3-1" }
   ],
-  "products": [
-    {
-      "sku": "94823",
-      "itemName": "Heinz Ketchup 500ml",
-      "price": 3.99,
-      "category": "Condiments",
-      "locationCode": "B3-1",
-      "shopperVisible": {
-        "itemName": true,
-        "price": true,
-        "sku": false
-      }
-    }
+  "walls": [
+    { "id": "wall_001", "x": 5, "y": 5, "width": 3, "height": 0.2, "rotation": 0 }
   ],
-  "columnMap": {
-    "WM_ITEM_NUMBER": "sku",
-    "SHORT_DESC": "itemName",
-    "SHELF_PRICE": "price",
-    "LOCATION_CODE": "locationCode"
-  }
+  "entrances": [
+    { "id": "entrance_001", "edgeIndex": 0, "offset": 10, "width": 1 }
+  ]
 }
 ```
 
-Note: the actual `Wall` and `Entrance` shapes that exist today (see Key Logic below) aren't reflected in this sketch yet — this format needs a pass once save/load is actually built.
+No `products`/`columnMap` yet — those join once Phase 5 (CSV import) creates a productStore to serialize. See **Export / Save / Load** in Key Logic below for how save/load is actually wired.
 
-### JSON Data Package (Shopper will load this)
+### JSON Data Package (Shopper will load this — planned)
 Exported from Builder. Shopper-facing only — no internal fields.
 
 ```json
@@ -158,14 +142,14 @@ aislez-builder/
 │   └── dev.js                       # Clears ELECTRON_RUN_AS_NODE before launch
 ├── src/
 │   ├── main/
-│   │   └── index.ts                 # Electron main process, window, native menu (Undo/Redo/Delete via IPC)
+│   │   └── index.ts                 # Electron main process, window, native menu (Undo/Redo/Delete/Save/Open via IPC), project:save/project:open file dialogs
 │   ├── preload/
-│   │   └── index.ts                 # Electron preload (context bridge)
+│   │   └── index.ts                 # Electron preload (context bridge) — exposes electron.ipcRenderer.invoke, used directly for file I/O, no extra API surface needed
 │   └── renderer/src/
 │       ├── main.tsx                 # React entry point
-│       ├── App.tsx                  # Root layout + Toolbar (contextual property panels per selection type)
+│       ├── App.tsx                  # Root layout + Toolbar (contextual property panels per selection type); Ctrl+S/Ctrl+O and menu:action → save/open
 │       ├── types/
-│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings + [planned] Product/file-format shapes
+│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings, ProjectFile (built) + [planned] Product/DataPackage shapes
 │       ├── components/
 │       │   ├── Canvas/
 │       │   │   ├── StoreCanvas.tsx        # Konva Stage, zoom/pan, rubber-band select, drop handler
@@ -181,18 +165,21 @@ aislez-builder/
 │       │   ├── Sidebar/
 │       │   │   ├── FixtureLibrary.tsx     # Drag-to-canvas palette: Wall, Entrance, built-in + custom fixtures
 │       │   │   └── ProductList.tsx        # [planned] Linked product list
+│       │   ├── StartScreen.tsx            # Launch screen when no project is open: "New Project" or "Open Project"
 │       │   ├── NewProjectDialog.tsx       # New project setup: name, unit, rectangle/custom shape, grid snap
 │       │   ├── ProjectSettingsModal.tsx   # Edit project settings at any time
 │       │   └── Import/                    # [planned] CSV import flow
 │       ├── store/
-│       │   ├── canvasStore.ts       # Fixtures, walls, entrances, selection, undo/redo history, chain ops
-│       │   ├── projectStore.ts      # Project settings (unit, store outline, per-edge perimeter thickness, grid snap, background image), custom fixture types, wall defaults
+│       │   ├── canvasStore.ts       # Fixtures, walls, entrances, selection, undo/redo history, chain ops, loadCanvas (bulk replace on file open)
+│       │   ├── projectStore.ts      # Project settings (unit, store outline, per-edge perimeter thickness, grid snap, background image), custom fixture types, wall defaults, currentFilePath, loadProject
 │       │   └── uiStore.ts           # Zoom/pan/viewport, active tool, grid mode, Ctrl-held tracking, tooltip
 │       └── utils/
 │           ├── chain.ts             # Chain traversal, code parsing, direction logic
 │           ├── chainState.ts        # Chain state helpers
 │           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter/wall↔wall flush detection, self-intersection check
-│           └── locationCode.ts      # Location code utilities
+│           ├── locationCode.ts      # Location code utilities
+│           ├── projectFile.ts       # serializeProject/hydrateProject — collect store state into a ProjectFile, or replace store state with one
+│           └── fileActions.ts       # saveProject/openProject — call the main process's file dialogs via IPC, wrap projectFile.ts
 ├── electron.vite.config.ts
 ├── tsconfig.json / tsconfig.node.json / tsconfig.web.json  # Solution-style — typecheck via `npm run typecheck`, not `tsc --noEmit`
 └── package.json
@@ -213,6 +200,7 @@ aislez-builder/
 - Derived values: `pixelsPerUnit`, `gridSizePx`
 - Custom fixture type library (built-ins + retailer-defined types)
 - Default length/thickness used when a new wall is dropped onto the canvas
+- `currentFilePath` — the open `.ifp`'s disk path, or null if never saved/opened; drives whether Ctrl+S resaves quietly or prompts
 
 **uiStore** — owns:
 - Zoom, pan, stage dimensions, active tool (`select` | `draw`), grid mode (`dots` | `lines` | `off`), tooltip, Ctrl-held tracking (for canvas panning)
@@ -261,8 +249,10 @@ Every drag interaction on the canvas (fixture move, wall move/resize, entrance s
 **Auto-Linking — planned, not built**
 Design intent once CSV import exists: after import, match each product's `locationCode` to a fixture's `locationCode`, set `product.fixtureId` on match, flag unmatched products in the UI.
 
-**Export / Save / Load — planned, not built**
-Design intent: `exporter` strips internal-only fields per `shopperVisible` toggles and writes the JSON data package; `.ifp` save/load serializes/hydrates all three Zustand stores. Neither exists yet — there's no File > Save/Open in the app menu today (see `src/main/index.ts`).
+**Save/Load (.ifp) — built; Export — planned, not built**
+File I/O is main-process-only: `registerFileHandlers` in `src/main/index.ts` registers `ipcMain.handle('project:save'/'project:open', ...)`, using native `dialog.showSaveDialog`/`showOpenDialog` and plain `fs/promises` read/write — the renderer never touches the filesystem directly. The renderer side is `utils/projectFile.ts` (`serializeProject` reads both stores into a `ProjectFile`; `hydrateProject` does the reverse via `projectStore.loadProject` + `canvasStore.loadCanvas`) and `utils/fileActions.ts` (`saveProject`/`openProject`, which call the IPC handlers and show a plain `window.alert` on failure or an invalid file). `currentFilePath` (in `projectStore`) is what makes Ctrl+S a quiet resave instead of always prompting — it's set after a successful save-with-dialog or open, and reset to null by `initProject` (a brand-new project has nowhere to resave to yet). Loading discards undo/redo history and clears selection (`loadCanvas`), since both would reference a different project's state. `App.tsx` wires Ctrl+S/Ctrl+O directly (same pattern as the existing Ctrl+Z/Ctrl+Y) and extends the existing `menu:action` IPC channel for File > Save/Open, mirroring how Edit > Undo/Redo already round-trip through the renderer.
+
+Still planned: `exporter` will strip internal-only fields per `shopperVisible` toggles and write the JSON data package for Shopper (Phase 6) — that's a separate, Shopper-facing format from `.ifp`, not a reuse of it.
 
 ---
 
