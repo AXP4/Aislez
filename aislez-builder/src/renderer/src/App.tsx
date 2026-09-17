@@ -3,10 +3,12 @@ import StoreCanvas from './components/Canvas/StoreCanvas'
 import FixtureLibrary from './components/Sidebar/FixtureLibrary'
 import NewProjectDialog from './components/NewProjectDialog'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
+import StartScreen from './components/StartScreen'
 import { useUiStore } from './store/uiStore'
 import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
 import { getChainMembers, parseCode } from './utils/chain'
+import { saveProject, openProject } from './utils/fileActions'
 import { WALL_COLOR } from './types'
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
@@ -392,6 +394,19 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
             <span style={{ color: '#444460', fontSize: 11 }}>
               {formatUnitShort(settings.storeWidth)} × {formatUnitShort(settings.storeHeight)}
             </span>
+            {SEP}
+            <IconBtn onClick={() => { void saveProject() }} title="Save (Ctrl+S)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </IconBtn>
+            <IconBtn onClick={() => { void openProject() }} title="Open (Ctrl+O)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+              </svg>
+            </IconBtn>
             {SEP}
             <IconBtn onClick={onOpenSettings} title="Project Settings">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -815,6 +830,7 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
 export default function App(): React.ReactElement {
   const { settings } = useProjectStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showNewProject, setShowNewProject] = useState(false)
 
   // Global keyboard shortcuts + Ctrl tracking for canvas panning
   useEffect(() => {
@@ -825,6 +841,8 @@ export default function App(): React.ReactElement {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); useCanvasStore.getState().undo() }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); useCanvasStore.getState().redo() }
+      if (e.key === 's') { e.preventDefault(); void saveProject() }
+      if (e.key === 'o') { e.preventDefault(); void openProject() }
     }
     const onKeyUp = (e: KeyboardEvent): void => {
       if (e.key === 'Control') useUiStore.getState().setCtrlHeld(false)
@@ -832,7 +850,7 @@ export default function App(): React.ReactElement {
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
 
-    // Edit menu IPC actions from main process
+    // Edit/File menu IPC actions from main process
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ipc = (window as any).electron?.ipcRenderer
     const onMenuAction = (_: unknown, action: string): void => {
@@ -840,6 +858,8 @@ export default function App(): React.ReactElement {
       if (action === 'undo') canvas.undo()
       else if (action === 'redo') canvas.redo()
       else if (action === 'delete' && canvas.selectedFixtureId) canvas.deleteFixture(canvas.selectedFixtureId)
+      else if (action === 'save') void saveProject()
+      else if (action === 'open') void openProject()
       // Chain-selected: delete not exposed from menu (double-click to detach first)
     }
     ipc?.on('menu:action', onMenuAction)
@@ -851,7 +871,10 @@ export default function App(): React.ReactElement {
     }
   }, [])
 
-  if (!settings) return <NewProjectDialog />
+  if (!settings) {
+    if (showNewProject) return <NewProjectDialog />
+    return <StartScreen onNewProject={() => setShowNewProject(true)} />
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>

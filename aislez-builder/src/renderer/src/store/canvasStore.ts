@@ -167,6 +167,9 @@ interface CanvasStore {
   deselectAll:   () => void
 
   scaleAllFixtures: (factor: number) => void
+
+  /** Replace all canvas content with a loaded file's contents — clears selection and undo/redo history, since neither makes sense against a different project's state */
+  loadCanvas: (fixtures: Fixture[], walls: Wall[], entrances: Entrance[]) => void
 }
 
 export const useCanvasStore = create<CanvasStore>((set) => ({
@@ -220,6 +223,19 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       backgroundImageSelected: false
     }
   }),
+
+  loadCanvas: (fixtures, walls, entrances) => set(() => ({
+    fixtures, walls, entrances,
+    selectedFixtureId: null,
+    selectedChainAnchor: null,
+    multiSelectedIds: [],
+    selectedWallId: null,
+    selectedEntranceId: null,
+    selectedPerimeterEdge: null,
+    backgroundImageSelected: false,
+    past: [],
+    future: []
+  })),
 
   addFixture: (type, x, y, width, height, label, customTypeId) => set((s) => ({
     ...withHistory(s),

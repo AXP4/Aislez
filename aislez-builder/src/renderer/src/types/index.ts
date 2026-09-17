@@ -160,15 +160,17 @@ export interface StoreMetadata {
 
 /**
  * .ifp project file — full editable state saved by Builder.
- * JSON under the hood, renamed .ifp.
+ * JSON under the hood, renamed .ifp. `products`/`columnMap` will join this
+ * once Phase 5 (CSV import) exists — no productStore to serialize yet.
  */
 export interface ProjectFile {
   version: string
-  store: StoreMetadata
+  settings: ProjectSettings
+  customFixtureTypes: CustomFixtureType[]
+  wallDefaults: { width: number; height: number }
   fixtures: Fixture[]
-  products: Product[]
-  columnMap: ColumnMap
-  backgroundImage: string | null
+  walls: Wall[]
+  entrances: Entrance[]
 }
 
 /**

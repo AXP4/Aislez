@@ -73,7 +73,12 @@ interface ProjectStore {
   customFixtureTypes: CustomFixtureType[]
   /** Default length/thickness used when a new wall is dropped onto the canvas */
   wallDefaults: WallDefaults
+  /** Disk path of the currently open .ifp file, or null if never saved/opened */
+  currentFilePath: string | null
+  setCurrentFilePath: (path: string | null) => void
   initProject: (settings: ProjectSettings) => void
+  /** Replace all project state with a loaded file's contents (unlike initProject, doesn't regenerate fixture types/wall defaults from unit — restores exactly what was saved) */
+  loadProject: (settings: ProjectSettings, customFixtureTypes: CustomFixtureType[], wallDefaults: WallDefaults) => void
   /** Update mutable project settings after creation (unit is immutable) */
   updateSettings: (updates: SettingsUpdate) => void
   /** Format a value in the project's unit, e.g. "1.20 m" or "4.00 ft" */
@@ -106,13 +111,21 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   gridSizePx: DEFAULT_GRID_SNAP * PIXELS_PER_UNIT.meters,
   customFixtureTypes: [],
   wallDefaults: makeWallDefaults('meters'),
+  currentFilePath: null,
+
+  setCurrentFilePath: (path) => set({ currentFilePath: path }),
 
   initProject: (settings) => {
     set({
       settings, ...derive(settings),
       customFixtureTypes: makeBuiltinTypes(settings.unit),
-      wallDefaults: makeWallDefaults(settings.unit)
+      wallDefaults: makeWallDefaults(settings.unit),
+      currentFilePath: null
     })
+  },
+
+  loadProject: (settings, customFixtureTypes, wallDefaults) => {
+    set({ settings, ...derive(settings), customFixtureTypes, wallDefaults })
   },
 
   updateSettings: (updates) => {
