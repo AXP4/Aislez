@@ -65,9 +65,11 @@
 9. ✅ Image is scaleable (aspect-locked corner drag), repositionable (drag), and rotatable (90° increments); opacity slider down to fully invisible, Remove button
 10. ✅ Arrow-extend: directional arrow buttons on a selected fixture extend the chain one unit; new member is auto-numbered
 
-> **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off only), Duplicate (Ctrl+D), full undo/redo history across fixtures/walls/entrances.
+> **Extra features added during Phase 3 (all founder-confirmed):** chain system (fixtures link into doubly-linked rows), multi-select (rubber-band + Ctrl+click + Ctrl+dblclick for chain), group move/rotate/duplicate/delete, smart alignment guides (Figma-style, grid-off — plus grid-on corner-to-corner magnet snapping, both now cross-type between fixtures and walls), Duplicate (Ctrl+D), full undo/redo history across fixtures/walls/entrances.
 
-**Test:** Create a store with a custom-drawn outline, adjust one side's thickness, place an interior wall flush against that side and confirm the seam disappears, add an entrance on another side, place fixtures and confirm they can't cross the perimeter or overlap the wall. Upload a floorplan photo, drag it into alignment with the outline, rotate it 90°, and fade it to invisible with the opacity slider.
+> **Correction (September 2026):** step 6 above was marked done in July but only ever applied to fixtures — walls had zero collision enforcement (could freely overlap other walls/fixtures or leave the perimeter) until now. Fixed properly this pass: `wallPlacementBlocked` checks every move/resize drag frame (not just on drop), so a blocked wall sticks at the last valid spot instead of passing through and rubber-banding back on release. Also fixed in this pass: entrance rendering (opening now spans the full host wall thickness instead of a thin line; a plain click now selects one, not just a drag), a wall border rendering artifact (small overshoot "dots" at a free-standing wall's own corners), and an antialiasing seam between two flush interior walls' fills.
+
+**Test:** Create a store with a custom-drawn outline, adjust one side's thickness, place an interior wall flush against that side and confirm the seam disappears, add an entrance on another side, place fixtures and confirm they can't cross the perimeter or overlap the wall. Upload a floorplan photo, drag it into alignment with the outline, rotate it 90°, and fade it to invisible with the opacity slider. Additionally: drag a wall into another wall/fixture and confirm it stops at contact in both grid modes; drag a fixture or wall near the other type and confirm magnet/alignment snapping engages.
 
 ---
 
@@ -204,4 +206,4 @@
 
 ---
 
-*Last updated: July 2026*
+*Last updated: September 2026*
