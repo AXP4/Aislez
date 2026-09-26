@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useProductStore } from '../../store/productStore'
+import { relinkAllProducts } from '../../utils/autoLinker'
 import type { Product } from '../../types'
 
 const itemBase: React.CSSProperties = {
@@ -17,6 +18,18 @@ function customFields(p: Product): [string, unknown][] {
 
 export default function ProductList(): React.ReactElement {
   const products = useProductStore((s) => s.products)
+  const [relinkMsg, setRelinkMsg] = useState('')
+
+  const unlinkedCount = products.filter((p) => !p.fixtureId).length
+
+  const handleRelink = (): void => {
+    const result = relinkAllProducts()
+    setRelinkMsg(
+      result.unlinkedCount === 0
+        ? 'All products linked.'
+        : `${result.linkedCount} linked, ${result.unlinkedCount} still unlinked.`
+    )
+  }
 
   if (products.length === 0) {
     return (
@@ -30,9 +43,27 @@ export default function ProductList(): React.ReactElement {
 
   return (
     <div style={{ padding: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a', marginBottom: 8 }}>
-        Products ({products.length})
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a' }}>
+          Products ({products.length})
+        </div>
+        {unlinkedCount > 0 && (
+          <button
+            onClick={handleRelink}
+            title="Re-check every unlinked product against fixtures placed since import"
+            style={{
+              fontSize: 10, fontWeight: 600, color: '#4A90D9',
+              background: 'rgba(74,144,217,0.12)', border: '1px solid rgba(74,144,217,0.3)',
+              borderRadius: 4, padding: '3px 7px', cursor: 'pointer'
+            }}
+          >
+            Relink
+          </button>
+        )}
       </div>
+      {relinkMsg && (
+        <div style={{ fontSize: 10.5, color: '#7a9a85', marginBottom: 8 }}>{relinkMsg}</div>
+      )}
       {products.map((p) => {
         const extras = customFields(p)
         return (
