@@ -165,8 +165,9 @@ export interface StoreMetadata {
 
 /**
  * .ifp project file — full editable state saved by Builder.
- * JSON under the hood, renamed .ifp. `products`/`columnMap` will join this
- * once Phase 5 (CSV import) exists — no productStore to serialize yet.
+ * JSON under the hood, renamed .ifp. `products`/`columnMap` are optional so a
+ * file saved before Phase 5 (CSV import) added productStore still loads —
+ * hydrateProject defaults them to empty.
  */
 export interface ProjectFile {
   version: string
@@ -176,6 +177,8 @@ export interface ProjectFile {
   fixtures: Fixture[]
   walls: Wall[]
   entrances: Entrance[]
+  products?: Product[]
+  columnMap?: ColumnMap
 }
 
 /**
