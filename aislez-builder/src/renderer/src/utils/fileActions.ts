@@ -20,9 +20,9 @@ function ipcRenderer(): any {
   return (window as any).electron?.ipcRenderer
 }
 
-/** Saves to the current file path if one is known (plain Ctrl+S resave); otherwise prompts with a native save dialog. */
-export async function saveProject(): Promise<void> {
-  const { settings, currentFilePath, setCurrentFilePath } = useProjectStore.getState()
+/** Shared save logic — `existingPath` null forces the native save dialog even if the project already has a file. */
+async function performSave(existingPath: string | null): Promise<void> {
+  const { settings, setCurrentFilePath } = useProjectStore.getState()
   if (!settings) return
   const ipc = ipcRenderer()
   if (!ipc) return
@@ -35,10 +35,20 @@ export async function saveProject(): Promise<void> {
     return
   }
 
-  const result: SaveResult = await ipc.invoke('project:save', json, settings.name, currentFilePath)
+  const result: SaveResult = await ipc.invoke('project:save', json, settings.name, existingPath)
   if (result.error) { window.alert(`Couldn't save project: ${result.error}`); return }
   if (result.canceled) return
   if (result.filePath) setCurrentFilePath(result.filePath)
+}
+
+/** Saves to the current file path if one is known (plain Ctrl+S resave); otherwise prompts with a native save dialog. */
+export async function saveProject(): Promise<void> {
+  await performSave(useProjectStore.getState().currentFilePath)
+}
+
+/** Always prompts a native save dialog, even if the project already has a file — lets the retailer save a copy under a new name/location. */
+export async function saveProjectAs(): Promise<void> {
+  await performSave(null)
 }
 
 /** Opens a native file dialog, loads the chosen .ifp, and replaces the current project. Returns true on success. */

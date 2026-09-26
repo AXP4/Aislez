@@ -11,7 +11,7 @@ import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
 import { useProductStore } from './store/productStore'
 import { getChainMembers, parseCode } from './utils/chain'
-import { saveProject, openProject } from './utils/fileActions'
+import { saveProject, saveProjectAs, openProject } from './utils/fileActions'
 import { WALL_COLOR } from './types'
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
@@ -403,6 +403,15 @@ function Toolbar({ onOpenSettings, onOpenImport }: { onOpenSettings: () => void;
                 <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/>
                 <polyline points="7 3 7 8 15 8"/>
+              </svg>
+            </IconBtn>
+            <IconBtn onClick={() => { void saveProjectAs() }} title="Save As… (Ctrl+Shift+S)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <path d="M7 3v3.4"/>
+                <circle cx="17.5" cy="6.5" r="4.5" fill="#1a1a2e" stroke="currentColor" strokeWidth="1.6"/>
+                <path d="M17.5 4.7v3.6M15.7 6.5h3.6" strokeWidth="1.6"/>
               </svg>
             </IconBtn>
             <IconBtn onClick={() => { void openProject() }} title="Open (Ctrl+O)">
@@ -885,7 +894,11 @@ export default function App(): React.ReactElement {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); useCanvasStore.getState().undo() }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); useCanvasStore.getState().redo() }
-      if (e.key === 's') { e.preventDefault(); void saveProject() }
+      if (e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (e.shiftKey) void saveProjectAs()
+        else void saveProject()
+      }
       if (e.key === 'o') { e.preventDefault(); void openProject() }
     }
     const onKeyUp = (e: KeyboardEvent): void => {
@@ -903,6 +916,7 @@ export default function App(): React.ReactElement {
       else if (action === 'redo') canvas.redo()
       else if (action === 'delete' && canvas.selectedFixtureId) canvas.deleteFixture(canvas.selectedFixtureId)
       else if (action === 'save') void saveProject()
+      else if (action === 'saveAs') void saveProjectAs()
       else if (action === 'open') void openProject()
       else if (action === 'import') setShowImport(true)
       // Chain-selected: delete not exposed from menu (double-click to detach first)

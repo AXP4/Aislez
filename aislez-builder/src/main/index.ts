@@ -62,6 +62,12 @@ function buildMenu(): void {
           click: () => send('save')
         },
         {
+          label: 'Save As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          registerAccelerator: false,
+          click: () => send('saveAs')
+        },
+        {
           label: 'Open',
           accelerator: 'CmdOrCtrl+O',
           registerAccelerator: false,
