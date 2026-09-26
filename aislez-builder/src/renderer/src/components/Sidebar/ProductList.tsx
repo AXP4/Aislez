@@ -1,5 +1,8 @@
 import React, { useState } from 'react'
 import { useProductStore } from '../../store/productStore'
+import { useCanvasStore } from '../../store/canvasStore'
+import { useProjectStore } from '../../store/projectStore'
+import { useUiStore } from '../../store/uiStore'
 import { relinkAllProducts } from '../../utils/autoLinker'
 import type { Product } from '../../types'
 
@@ -14,6 +17,18 @@ const KNOWN_KEYS = new Set(['id', 'sku', 'itemName', 'price', 'category', 'locat
 /** Retailer-named columns kept via Product's catch-all (e.g. "Department", "Backroom Qty") */
 function customFields(p: Product): [string, unknown][] {
   return Object.entries(p).filter(([k, v]) => !KNOWN_KEYS.has(k) && v !== undefined && v !== '')
+}
+
+/** Selects the product's fixture (existing selection highlight) and centers the canvas on it, so an off-screen fixture is actually visible. */
+function highlightFixture(fixtureId: string): void {
+  const fixture = useCanvasStore.getState().fixtures.find((f) => f.id === fixtureId)
+  if (!fixture) return
+  useCanvasStore.getState().selectFixture(fixtureId)
+  const { pixelsPerUnit } = useProjectStore.getState()
+  const { zoom, stageWidth, stageHeight, setViewport } = useUiStore.getState()
+  const cx = (fixture.x + fixture.width / 2) * pixelsPerUnit
+  const cy = (fixture.y + fixture.height / 2) * pixelsPerUnit
+  setViewport(zoom, stageWidth / 2 - cx * zoom, stageHeight / 2 - cy * zoom)
 }
 
 export default function ProductList(): React.ReactElement {
@@ -67,7 +82,12 @@ export default function ProductList(): React.ReactElement {
       {products.map((p) => {
         const extras = customFields(p)
         return (
-          <div key={p.id} style={itemBase}>
+          <div
+            key={p.id}
+            style={{ ...itemBase, cursor: p.fixtureId ? 'pointer' : 'default' }}
+            onClick={() => p.fixtureId && highlightFixture(p.fixtureId)}
+            title={p.fixtureId ? 'Click to highlight this fixture' : undefined}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
               <span style={{ fontSize: 12, color: '#dde0e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.itemName}>
                 {p.itemName}
