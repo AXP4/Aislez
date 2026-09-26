@@ -93,26 +93,30 @@
 
 ---
 
-## Phase 5 — Builder: CSV Import
+## Phase 5 — Builder: CSV Import ✅ Complete
 
 **Goal:** Retailer can upload a CSV, map columns, and have products appear in the app.
 
+> **Implementation note (September 2026):** Grew past the original "map to 5 fixed fields" scope, based on founder feedback partway through — real retailers don't share one schema (Walmart's "Department" is a number, not a text category; some CSVs carry inventory/margin data that must never reach a shopper). So the mapper doesn't force every column into `sku`/`itemName`/`price`/`category`/`locationCode` — any column can instead become a **custom field** under whatever name the retailer types, and every mapped column (standard or custom) independently gets **Required** and **Shopper-visible** checkboxes, not just a single global toggle. `Product`'s existing catch-all index signature (`[key: string]: unknown`) is what makes this work with no schema change. Required/Shopper-visible turned out to be *field-level* settings that make sense to revisit after import too — not one-time import decisions — so they're reopenable anytime via a "Fields" button, not locked to the import wizard. See [ARCHITECTURE.md](ARCHITECTURE.md)'s "Products, CSV Import, and Auto-Linking" section for the full design.
+
 ### Steps
-1. Add Import button to toolbar
-2. Build CSVImporter.jsx modal — file upload, preview first 5 rows of CSV
-3. Write csvParser.js — parse CSV into array of row objects
-4. Build ColumnMapper.jsx — show their column names, dropdown to map each to standard fields (sku, itemName, price, category, locationCode)
-5. On confirm mapping → import all rows into productStore
-6. Build ImportSummary.jsx — show how many products imported, how many linked, how many unlinked
-7. Write autoLinker.js:
+1. ✅ Add Import button to toolbar (+ File menu, Ctrl+S/O parity)
+2. ✅ Build CSVImporter.tsx modal — file upload, preview rows
+3. ✅ Write csvParser.ts — hand-rolled parser (quoted fields, embedded commas/newlines, CRLF/LF), no library needed
+4. ✅ Build ColumnMapper.tsx — per column: target field (standard **or custom-named**), Required, Shopper-visible, live preview table
+5. ✅ On confirm mapping → import all rows into productStore (rows missing a Required field are skipped, not imported broken)
+6. ✅ Build ImportSummary.tsx — imported / linked / unlinked / skipped counts
+7. ✅ Write autoLinker.ts:
    - After import, loop through products
    - Match product.locationCode to fixture.locationCode
    - Set product.fixtureId where match found
    - Flag unmatched products
-8. Build ProductList.jsx in sidebar — show all imported products, linked ones show their fixture code, unlinked ones show a warning
-9. Add shopper-visible toggle per field in ColumnMapper step
+   - **Extra:** Relink action to re-run this anytime (placing/coding a fixture *after* import doesn't link retroactively on its own — found during testing)
+8. ✅ Build ProductList.tsx in sidebar — show all imported products, linked ones show their fixture code, unlinked ones show a warning
+   - **Extra:** click a linked product to highlight + center its fixture on the canvas; double-click to open a full detail editor (all fields, including custom ones, plus delete); a Fields button reopens the Required/Shopper-visible menu anytime, not just at import
+9. ✅ Add shopper-visible toggle per field in ColumnMapper step (generalized to every field, standard or custom, and persisted independent of any one import)
 
-**Test:** Import the mock CSV. All products appear. Products with matching location codes show as linked to their fixtures.
+**Test:** Import the mock CSV. All products appear. Products with matching location codes show as linked to their fixtures. Additionally: import a CSV with a non-standard column (e.g. a numeric "Department"), keep it as a custom field, and confirm it displays and can be toggled shopper-visible; place a fixture *after* importing an item coded for it and confirm Relink picks it up; double-click a product, edit its Location Code to match a different fixture, and confirm it re-links on save; save the project, reopen it, and confirm every imported product (and its field settings) is still there.
 
 ---
 
