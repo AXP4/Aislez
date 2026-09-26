@@ -47,8 +47,8 @@ Builder is the only application that currently exists and runs. Shopper and the 
 | Perimeter sketch tool rejects self-intersecting outlines | ✅ Built |
 | Floorplan image background layer (upload, scale/reposition/rotate, opacity) | ✅ Built |
 | Save/load `.ifp` project file, launch start screen | ✅ Built |
-| CSV import + column mapping + auto-linking | ⬜ Planned |
-| Product list sidebar | ⬜ Planned |
+| CSV import + column mapping + auto-linking + Relink | ✅ Built |
+| Product list sidebar (highlight-on-click, detail editor, per-field settings) | ✅ Built |
 | Export JSON data package | ⬜ Planned |
 | Shopper app (any part of it) | ⬜ Not started |
 
@@ -88,11 +88,21 @@ The full editable project. JSON under the hood, renamed .ifp. `ProjectFile` in `
   ],
   "entrances": [
     { "id": "entrance_001", "edgeIndex": 0, "offset": 10, "width": 1 }
-  ]
+  ],
+  "products": [
+    {
+      "id": "product_001", "itemName": "Heinz Ketchup 500ml", "sku": "94823", "price": 3.99,
+      "category": "Condiments", "locationCode": "B3-1", "fixtureId": "fixture_001",
+      "Department": "95",
+      "shopperVisible": { "itemName": true, "price": true, "category": true, "sku": false, "Department": false }
+    }
+  ],
+  "columnMap": { "SKU": "sku", "ITEM_NAME": "itemName", "PRICE": "price", "DEPARTMENT": "Department" },
+  "requiredFields": ["itemName", "sku"]
 }
 ```
 
-No `products`/`columnMap` yet — those join once Phase 5 (CSV import) creates a productStore to serialize. See **Export / Save / Load** in Key Logic below for how save/load is actually wired.
+`products`/`columnMap`/`requiredFields` are optional in the `ProjectFile` type specifically so a `.ifp` saved before Phase 5 still loads (`hydrateProject` defaults each to empty) — see **Save/Load** in Key Logic below for how save/load is actually wired, and **Products, CSV Import, and Auto-Linking** for what these three fields mean.
 
 ### JSON Data Package (Shopper will load this — planned)
 Exported from Builder. Shopper-facing only — no internal fields.
@@ -149,7 +159,7 @@ aislez-builder/
 │       ├── main.tsx                 # React entry point
 │       ├── App.tsx                  # Root layout + Toolbar (contextual property panels per selection type); Ctrl+S/Ctrl+O and menu:action → save/open
 │       ├── types/
-│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings, ProjectFile (built) + [planned] Product/DataPackage shapes
+│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings, ProjectFile, Product/ColumnMap/ShopperVisibility (built) + [planned] DataPackage shape
 │       ├── components/
 │       │   ├── Canvas/
 │       │   │   ├── StoreCanvas.tsx        # Konva Stage, zoom/pan, rubber-band select, drop handler
@@ -163,30 +173,38 @@ aislez-builder/
 │       │   │   ├── Ruler.tsx              # Horizontal + vertical rulers
 │       │   │   └── BackgroundLayer.tsx    # Floorplan reference photo — scale/reposition/rotate, renders bottommost
 │       │   ├── Sidebar/
-│       │   │   ├── FixtureLibrary.tsx     # Drag-to-canvas palette: Wall, Entrance, built-in + custom fixtures
-│       │   │   └── ProductList.tsx        # [planned] Linked product list
+│       │   │   ├── FixtureLibrary.tsx       # Drag-to-canvas palette: Wall, Entrance, built-in + custom fixtures
+│       │   │   ├── ProductList.tsx          # Imported products: click a linked one to highlight+center its fixture, double-click to edit, delete, Fields/Relink buttons
+│       │   │   ├── ProductFieldSettings.tsx # Per-field Required/Shopper-visible menu — same UI as import's ColumnMapper, reopenable anytime
+│       │   │   └── ProductDetailModal.tsx   # Edit one product's standard + custom fields directly; re-links on save if locationCode changed
 │       │   ├── StartScreen.tsx            # Launch screen when no project is open: "New Project" or "Open Project"
 │       │   ├── NewProjectDialog.tsx       # New project setup: name, unit, rectangle/custom shape, grid snap
 │       │   ├── ProjectSettingsModal.tsx   # Edit project settings at any time
-│       │   └── Import/                    # [planned] CSV import flow
+│       │   └── Import/
+│       │       ├── CSVImporter.tsx    # Modal orchestrator: upload → map columns → summary
+│       │       ├── ColumnMapper.tsx   # Per CSV column: target field (standard or custom-named), Required, Shopper-visible; live preview table
+│       │       └── ImportSummary.tsx  # Imported/linked/unlinked/skipped counts after confirming the mapping
 │       ├── store/
 │       │   ├── canvasStore.ts       # Fixtures, walls, entrances, selection, undo/redo history, chain ops, loadCanvas (bulk replace on file open)
 │       │   ├── projectStore.ts      # Project settings (unit, store outline, per-edge perimeter thickness, grid snap, background image), custom fixture types, wall defaults, currentFilePath, loadProject
+│       │   ├── productStore.ts      # Imported products, columnMap, requiredFields; import/set/update/delete a product, per-field visibility/required setters
 │       │   └── uiStore.ts           # Zoom/pan/viewport, active tool, grid mode, Ctrl-held tracking, tooltip
 │       └── utils/
 │           ├── chain.ts             # Chain traversal, code parsing, direction logic
 │           ├── chainState.ts        # Chain state helpers
 │           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter/wall↔wall flush detection, self-intersection check
 │           ├── locationCode.ts      # Location code utilities
-│           ├── projectFile.ts       # serializeProject/hydrateProject — collect store state into a ProjectFile, or replace store state with one
-│           └── fileActions.ts       # saveProject/openProject — call the main process's file dialogs via IPC, wrap projectFile.ts
+│           ├── projectFile.ts       # serializeProject/hydrateProject — collect all store state (including products) into a ProjectFile, or replace store state with one
+│           ├── fileActions.ts       # saveProject/saveProjectAs/openProject — call the main process's file dialogs via IPC, wrap projectFile.ts
+│           ├── csvParser.ts         # parseCsv — hand-rolled RFC4180-ish parser (quoted fields, embedded commas/newlines, CRLF/LF)
+│           └── autoLinker.ts        # linkProductsToFixtures + relinkAllProducts — match product.locationCode to fixture.locationCode, set fixtureId
 ├── electron.vite.config.ts
 ├── tsconfig.json / tsconfig.node.json / tsconfig.web.json  # Solution-style — typecheck via `npm run typecheck`, not `tsc --noEmit`
 └── package.json
 ```
 
 ### State Management
-**Zustand**, three stores (there is no `productStore` — product/CSV data doesn't exist yet; it will need a new store or an extension of one of these once Phase 5 starts):
+**Zustand**, four stores:
 
 **canvasStore** — owns:
 - Fixtures (position, size, rotation, chain links `prevId`/`nextId`, location code)
@@ -201,6 +219,11 @@ aislez-builder/
 - Custom fixture type library (built-ins + retailer-defined types)
 - Default length/thickness used when a new wall is dropped onto the canvas
 - `currentFilePath` — the open `.ifp`'s disk path, or null if never saved/opened; drives whether Ctrl+S resaves quietly or prompts
+
+**productStore** — owns:
+- `products` (each a `Product`: standard fields `itemName`/`sku`/`price`/`category`/`locationCode`, `fixtureId` set by the linker, `shopperVisible` map, plus any retailer-named custom fields via the catch-all index signature)
+- `columnMap` — the last import's CSV-header → field-name mapping (informational; not needed for anything to keep working)
+- `requiredFields` — field names currently marked "every item needs this," edited from the Fields panel, independent of any one import
 
 **uiStore** — owns:
 - Zoom, pan, stage dimensions, active tool (`select` | `draw`), grid mode (`dots` | `lines` | `off`), tooltip, Ctrl-held tracking (for canvas panning)
@@ -246,11 +269,21 @@ Two mutually-exclusive snap mechanisms, both cross-type (fixtures and walls snap
 **Direct-Konva-mutation drag pattern**
 Every drag interaction on the canvas (fixture move, wall move/resize, entrance slide/resize, perimeter thickness handle) mutates the Konva node directly frame-by-frame and only writes to the Zustand store once, on drag end. This keeps React re-renders out of the drag loop — writing to the store on every `dragmove` was the original cause of drift/jitter bugs early on.
 
-**Auto-Linking — planned, not built**
-Design intent once CSV import exists: after import, match each product's `locationCode` to a fixture's `locationCode`, set `product.fixtureId` on match, flag unmatched products in the UI.
+**Products, CSV Import, and Auto-Linking**
+`CSVImporter.tsx` is a three-step modal: upload (parse via `csvParser.ts`'s hand-rolled parser — no library dependency), map (`ColumnMapper.tsx`), summary (`ImportSummary.tsx`). Per CSV column, the retailer picks a target — one of 5 standard fields (`sku`/`itemName`/`price`/`category`/`locationCode`) or a **custom field** under whatever name they type — plus, independently, whether it's **Required** and/or **Shopper-visible**. This is why `ColumnMap`/`ShopperVisibility` (`types/index.ts`) are typed as `Partial<Record<string, ...>>` rather than keyed to the 5 standard names: a `Product` is `{ id, sku?, itemName, price?, category?, locationCode?, fixtureId?, shopperVisible, [key: string]: unknown }` — that catch-all is what lets a retailer's own field (e.g. Walmart's numeric "Department") live on the object under its own name with no schema change. A row missing a value for *any* Required field (Item Name always among them, locked in the UI) is skipped rather than imported as a broken product, and the importer reports the skipped count.
+
+Auto-linking (`autoLinker.ts`'s `linkProductsToFixtures`) matches `product.locationCode` to `fixture.locationCode` and sets `fixtureId` on match — but it only runs at that moment. Placing or (re)coding a fixture *after* importing doesn't retroactively link anything by itself (a real gap found during testing) — `relinkAllProducts` re-runs the same matching against the canvas's current fixtures without touching anything else, wired to a **Relink** button in `ProductList.tsx` that appears whenever something's unlinked.
+
+**Import is a full replace, by design** — `importProducts` (`productStore.ts`) always does `set({ products, columnMap, requiredFields })`, wholesale. Importing a second CSV, whether its columns match the first exactly or not at all, discards every existing product and starts fresh; there is no merge/append or update-by-key logic. This was a deliberate choice (confirmed with the founder) over a merge-by-key design, to avoid needing a defined unique key and conflict rules for a case that hasn't come up yet.
+
+**Required and Shopper-visible are field-level settings, not per-product, and not import-locked** — `shopperVisible` is stored per-product (so it round-trips through save/load per-record), but `setFieldVisibility`/`setFieldRequired` always write across *every* product that has that field, because visibility/requiredness is conceptually a property of the field, not any one item. `ProductFieldSettings.tsx` reopens the exact same menu shown during import, anytime, from a "Fields" button in `ProductList.tsx` — toggling Required there never deletes existing data; it just surfaces a count of products currently missing that field.
+
+**Product editing** — double-clicking a product in `ProductList.tsx` opens `ProductDetailModal.tsx`: standard fields as dedicated inputs, custom fields as an editable, addable/removable key-value list. Saving calls `updateProduct` (a *full replace* of the product's own fields, not a merge — otherwise removing a custom field in the editor wouldn't actually remove it) and immediately calls `relinkAllProducts`, so editing Location Code takes effect without a separate Relink click. Single-clicking a linked product instead calls `selectFixture` + recenters the viewport on it (`highlightFixture` in `ProductList.tsx`) — same idea Shopper will eventually do with search results, just for the retailer's own use inside Builder.
 
 **Save/Load (.ifp) — built; Export — planned, not built**
-File I/O is main-process-only: `registerFileHandlers` in `src/main/index.ts` registers `ipcMain.handle('project:save'/'project:open', ...)`, using native `dialog.showSaveDialog`/`showOpenDialog` and plain `fs/promises` read/write — the renderer never touches the filesystem directly. The renderer side is `utils/projectFile.ts` (`serializeProject` reads both stores into a `ProjectFile`; `hydrateProject` does the reverse via `projectStore.loadProject` + `canvasStore.loadCanvas`) and `utils/fileActions.ts` (`saveProject`/`openProject`, which call the IPC handlers and show a plain `window.alert` on failure or an invalid file). `currentFilePath` (in `projectStore`) is what makes Ctrl+S a quiet resave instead of always prompting — it's set after a successful save-with-dialog or open, and reset to null by `initProject` (a brand-new project has nowhere to resave to yet). Loading discards undo/redo history and clears selection (`loadCanvas`), since both would reference a different project's state. `App.tsx` wires Ctrl+S/Ctrl+O directly (same pattern as the existing Ctrl+Z/Ctrl+Y) and extends the existing `menu:action` IPC channel for File > Save/Open, mirroring how Edit > Undo/Redo already round-trip through the renderer.
+File I/O is main-process-only: `registerFileHandlers` in `src/main/index.ts` registers `ipcMain.handle('project:save'/'project:open', ...)`, using native `dialog.showSaveDialog`/`showOpenDialog` and plain `fs/promises` read/write — the renderer never touches the filesystem directly. The renderer side is `utils/projectFile.ts` (`serializeProject` reads all three data stores — canvas, project, and product — into a `ProjectFile`; `hydrateProject` does the reverse via `projectStore.loadProject` + `canvasStore.loadCanvas` + `productStore.importProducts`) and `utils/fileActions.ts` (`saveProject`/`saveProjectAs`/`openProject`, which call the IPC handlers and show a plain `window.alert` on failure or an invalid file). `saveProject` resaves to `currentFilePath` if one exists; `saveProjectAs` always prompts, regardless. `currentFilePath` (in `projectStore`) is set after a successful save-with-dialog or open, and reset to null by `initProject` (a brand-new project has nowhere to resave to yet). Loading discards undo/redo history and clears selection (`loadCanvas`), since both would reference a different project's state. `App.tsx` wires Ctrl+S/Ctrl+Shift+S/Ctrl+O directly (same pattern as the existing Ctrl+Z/Ctrl+Y) and extends the existing `menu:action` IPC channel for File > Save/Save As/Open, mirroring how Edit > Undo/Redo already round-trip through the renderer.
+
+`products`/`columnMap`/`requiredFields` were *not* included when `.ifp` save/load first shipped — `productStore` didn't exist yet at that point, and the omission wasn't caught until a retailer actually lost imported products across a save/reopen. Now that the mistake is on record: **any new field added to any store needs an explicit trip through `serializeProject`/`hydrateProject`/`isValidProjectFile`, or it silently doesn't survive a save.**
 
 Still planned: `exporter` will strip internal-only fields per `shopperVisible` toggles and write the JSON data package for Shopper (Phase 6) — that's a separate, Shopper-facing format from `.ifp`, not a reuse of it.
 
