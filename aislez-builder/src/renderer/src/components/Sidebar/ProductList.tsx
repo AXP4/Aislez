@@ -1,0 +1,76 @@
+import React from 'react'
+import { useProductStore } from '../../store/productStore'
+import type { Product } from '../../types'
+
+const itemBase: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 3,
+  padding: '8px 10px', borderRadius: 6,
+  background: 'rgba(255,255,255,0.06)', marginBottom: 4
+}
+
+const KNOWN_KEYS = new Set(['id', 'sku', 'itemName', 'price', 'category', 'locationCode', 'fixtureId', 'shopperVisible'])
+
+/** Retailer-named columns kept via Product's catch-all (e.g. "Department", "Backroom Qty") */
+function customFields(p: Product): [string, unknown][] {
+  return Object.entries(p).filter(([k, v]) => !KNOWN_KEYS.has(k) && v !== undefined && v !== '')
+}
+
+export default function ProductList(): React.ReactElement {
+  const products = useProductStore((s) => s.products)
+
+  if (products.length === 0) {
+    return (
+      <div style={{ padding: 12, textAlign: 'center' }}>
+        <div style={{ fontSize: 12, color: '#5a5a78', lineHeight: 1.5 }}>
+          No products yet. Use File &gt; Import Products to bring in a CSV.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ padding: 12 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a', marginBottom: 8 }}>
+        Products ({products.length})
+      </div>
+      {products.map((p) => {
+        const extras = customFields(p)
+        return (
+          <div key={p.id} style={itemBase}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 12, color: '#dde0e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.itemName}>
+                {p.itemName}
+              </span>
+              {p.price !== undefined && (
+                <span style={{ fontSize: 11, color: '#7a95a8', flexShrink: 0 }}>${p.price.toFixed(2)}</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {p.fixtureId ? (
+                <span style={{ fontSize: 10, color: '#27ae60', fontWeight: 600 }}>{p.locationCode}</span>
+              ) : (
+                <span style={{ fontSize: 10, color: '#e67e22', fontWeight: 600 }}>
+                  ⚠ {p.locationCode ? `No fixture at ${p.locationCode}` : 'No location code'}
+                </span>
+              )}
+              {p.category && <span style={{ fontSize: 10, color: '#5a5a78' }}>· {p.category}</span>}
+            </div>
+            {extras.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                {extras.map(([key, value]) => (
+                  <span key={key} style={{
+                    fontSize: 9.5, color: '#8a8aa0', background: 'rgba(255,255,255,0.06)',
+                    borderRadius: 3, padding: '2px 5px', whiteSpace: 'nowrap'
+                  }}>
+                    {key}: {String(value)}
+                    {p.shopperVisible[key] && <span style={{ color: '#4A90D9' }}> · visible</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

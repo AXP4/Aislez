@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import StoreCanvas from './components/Canvas/StoreCanvas'
 import FixtureLibrary from './components/Sidebar/FixtureLibrary'
+import ProductList from './components/Sidebar/ProductList'
 import NewProjectDialog from './components/NewProjectDialog'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import StartScreen from './components/StartScreen'
+import CSVImporter from './components/Import/CSVImporter'
 import { useUiStore } from './store/uiStore'
 import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
+import { useProductStore } from './store/productStore'
 import { getChainMembers, parseCode } from './utils/chain'
 import { saveProject, openProject } from './utils/fileActions'
 import { WALL_COLOR } from './types'
@@ -45,7 +48,7 @@ function IconBtn({
   )
 }
 
-function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.ReactElement {
+function Toolbar({ onOpenSettings, onOpenImport }: { onOpenSettings: () => void; onOpenImport: () => void }): React.ReactElement {
   const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
@@ -405,6 +408,13 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
             <IconBtn onClick={() => { void openProject() }} title="Open (Ctrl+O)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+              </svg>
+            </IconBtn>
+            <IconBtn onClick={onOpenImport} title="Import Products (CSV)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
             </IconBtn>
             {SEP}
@@ -825,12 +835,46 @@ function Toolbar({ onOpenSettings }: { onOpenSettings: () => void }): React.Reac
   )
 }
 
+// ── Sidebar tabs ────────────────────────────────────────────────────────────
+
+function SidebarTabs(): React.ReactElement {
+  const { sidebarTab, setSidebarTab } = useUiStore()
+  const productCount = useProductStore((s) => s.products.length)
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '9px 0', fontSize: 12, fontWeight: 600,
+    border: 'none', borderBottom: active ? '2px solid #4A90D9' : '2px solid transparent',
+    background: 'transparent', color: active ? '#4A90D9' : '#7a7a9a', cursor: 'pointer'
+  })
+
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid #2a2a44', flexShrink: 0 }}>
+      <button style={tabStyle(sidebarTab === 'fixtures')} onClick={() => setSidebarTab('fixtures')}>
+        Fixtures
+      </button>
+      <button style={tabStyle(sidebarTab === 'products')} onClick={() => setSidebarTab('products')}>
+        Products{productCount > 0 ? ` (${productCount})` : ''}
+      </button>
+    </div>
+  )
+}
+
+function SidebarContent(): React.ReactElement {
+  const sidebarTab = useUiStore((s) => s.sidebarTab)
+  return (
+    <div style={{ flex: 1, overflowY: 'auto' }}>
+      {sidebarTab === 'fixtures' ? <FixtureLibrary /> : <ProductList />}
+    </div>
+  )
+}
+
 // ── App ──────────────────────────────────────────────────────────────────────
 
 export default function App(): React.ReactElement {
   const { settings } = useProjectStore()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   // Global keyboard shortcuts + Ctrl tracking for canvas panning
   useEffect(() => {
@@ -860,6 +904,7 @@ export default function App(): React.ReactElement {
       else if (action === 'delete' && canvas.selectedFixtureId) canvas.deleteFixture(canvas.selectedFixtureId)
       else if (action === 'save') void saveProject()
       else if (action === 'open') void openProject()
+      else if (action === 'import') setShowImport(true)
       // Chain-selected: delete not exposed from menu (double-click to detach first)
     }
     ipc?.on('menu:action', onMenuAction)
@@ -878,19 +923,22 @@ export default function App(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <Toolbar onOpenSettings={() => setSettingsOpen(true)} />
+      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenImport={() => setShowImport(true)} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside style={{
           width: 200, background: '#1e1e30',
-          borderRight: '1px solid #2a2a44', overflowY: 'auto', flexShrink: 0
+          borderRight: '1px solid #2a2a44', overflowY: 'auto', flexShrink: 0,
+          display: 'flex', flexDirection: 'column'
         }}>
-          <FixtureLibrary />
+          <SidebarTabs />
+          <SidebarContent />
         </aside>
         <main style={{ flex: 1, overflow: 'hidden' }}>
           <StoreCanvas />
         </main>
       </div>
       {settingsOpen && <ProjectSettingsModal onClose={() => setSettingsOpen(false)} />}
+      {showImport && <CSVImporter onClose={() => setShowImport(false)} />}
     </div>
   )
 }

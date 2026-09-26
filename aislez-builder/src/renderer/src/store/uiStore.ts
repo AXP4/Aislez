@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ActiveTool } from '../types'
+import type { ActiveTool, SidebarTab } from '../types'
 
 export type GridMode = 'dots' | 'lines' | 'off'
 
@@ -26,6 +26,9 @@ interface UiStore {
   hideTooltip: () => void
   ctrlHeld: boolean
   setCtrlHeld: (v: boolean) => void
+
+  sidebarTab: SidebarTab
+  setSidebarTab: (tab: SidebarTab) => void
 
   // ── Viewport ─────────────────────────────────────────────────────────────
   zoom: number
@@ -58,6 +61,9 @@ export const useUiStore = create<UiStore>((set, get) => ({
   hideTooltip: () => set((s) => ({ tooltip: { ...s.tooltip, visible: false } })),
   ctrlHeld: false,
   setCtrlHeld: (v) => set({ ctrlHeld: v }),
+
+  sidebarTab: 'fixtures',
+  setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
   // Viewport
   zoom: 1,

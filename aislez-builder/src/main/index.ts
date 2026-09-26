@@ -68,6 +68,11 @@ function buildMenu(): void {
           click: () => send('open')
         },
         { type: 'separator' },
+        {
+          label: 'Import Products (CSV)…',
+          click: () => send('import')
+        },
+        { type: 'separator' },
         { role: 'quit', label: 'Exit' }
       ]
     },

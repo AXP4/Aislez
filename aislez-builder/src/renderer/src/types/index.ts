@@ -116,14 +116,19 @@ export interface Entrance {
 
 // ─── Product ─────────────────────────────────────────────────────────────────
 
-/** Standard column names products can be mapped to */
+/** Standard column names with dedicated meaning to the app (locationCode drives auto-linking, etc.) */
 export type ColumnKey = 'sku' | 'itemName' | 'price' | 'category' | 'locationCode'
 
-/** Maps the retailer's CSV column header → our standard field name */
-export type ColumnMap = Partial<Record<string, ColumnKey>>
+/**
+ * Maps the retailer's CSV column header → a product field name. Usually one
+ * of the standard ColumnKeys, but can be any retailer-chosen name for a
+ * column that doesn't fit the standard set (e.g. "Department", "Backroom
+ * Qty") — stored on Product via its catch-all index signature.
+ */
+export type ColumnMap = Partial<Record<string, string>>
 
-/** Controls which fields are exported to Shopper vs kept internal */
-export type ShopperVisibility = Partial<Record<ColumnKey, boolean>>
+/** Per-field: whether it's exported to Shopper. Keyed the same as ColumnMap's values — standard or custom field names alike. */
+export type ShopperVisibility = Partial<Record<string, boolean>>
 
 export interface Product {
   id: string
