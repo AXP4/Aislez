@@ -79,7 +79,7 @@ export default function CSVImporter({ onClose }: Props): React.ReactElement {
 
     const { fixtures } = useCanvasStore.getState()
     const { products: linked, linkedCount, unlinkedCount } = linkProductsToFixtures(products, fixtures)
-    useProductStore.getState().importProducts(linked, columnMap)
+    useProductStore.getState().importProducts(linked, columnMap, requiredFields)
     setSummary({ totalImported: linked.length, linkedCount, unlinkedCount, skippedCount })
     setStep('summary')
   }

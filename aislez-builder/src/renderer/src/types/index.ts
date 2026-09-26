@@ -179,6 +179,7 @@ export interface ProjectFile {
   entrances: Entrance[]
   products?: Product[]
   columnMap?: ColumnMap
+  requiredFields?: string[]
 }
 
 /**

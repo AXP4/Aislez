@@ -4,6 +4,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useProjectStore } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import { relinkAllProducts } from '../../utils/autoLinker'
+import ProductFieldSettings from './ProductFieldSettings'
 import type { Product } from '../../types'
 
 const itemBase: React.CSSProperties = {
@@ -33,7 +34,9 @@ function highlightFixture(fixtureId: string): void {
 
 export default function ProductList(): React.ReactElement {
   const products = useProductStore((s) => s.products)
+  const deleteProduct = useProductStore((s) => s.deleteProduct)
   const [relinkMsg, setRelinkMsg] = useState('')
+  const [showFieldSettings, setShowFieldSettings] = useState(false)
 
   const unlinkedCount = products.filter((p) => !p.fixtureId).length
 
@@ -62,19 +65,32 @@ export default function ProductList(): React.ReactElement {
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#7a7a9a' }}>
           Products ({products.length})
         </div>
-        {unlinkedCount > 0 && (
+        <div style={{ display: 'flex', gap: 6 }}>
           <button
-            onClick={handleRelink}
-            title="Re-check every unlinked product against fixtures placed since import"
+            onClick={() => setShowFieldSettings(true)}
+            title="Change which fields are required / shopper-visible, anytime"
             style={{
-              fontSize: 10, fontWeight: 600, color: '#4A90D9',
-              background: 'rgba(74,144,217,0.12)', border: '1px solid rgba(74,144,217,0.3)',
+              fontSize: 10, fontWeight: 600, color: '#9090a8',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid #3a3a5a',
               borderRadius: 4, padding: '3px 7px', cursor: 'pointer'
             }}
           >
-            Relink
+            Fields
           </button>
-        )}
+          {unlinkedCount > 0 && (
+            <button
+              onClick={handleRelink}
+              title="Re-check every unlinked product against fixtures placed since import"
+              style={{
+                fontSize: 10, fontWeight: 600, color: '#4A90D9',
+                background: 'rgba(74,144,217,0.12)', border: '1px solid rgba(74,144,217,0.3)',
+                borderRadius: 4, padding: '3px 7px', cursor: 'pointer'
+              }}
+            >
+              Relink
+            </button>
+          )}
+        </div>
       </div>
       {relinkMsg && (
         <div style={{ fontSize: 10.5, color: '#7a9a85', marginBottom: 8 }}>{relinkMsg}</div>
@@ -92,9 +108,21 @@ export default function ProductList(): React.ReactElement {
               <span style={{ fontSize: 12, color: '#dde0e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.itemName}>
                 {p.itemName}
               </span>
-              {p.price !== undefined && (
-                <span style={{ fontSize: 11, color: '#7a95a8', flexShrink: 0 }}>${p.price.toFixed(2)}</span>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {p.price !== undefined && (
+                  <span style={{ fontSize: 11, color: '#7a95a8' }}>${p.price.toFixed(2)}</span>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteProduct(p.id) }}
+                  title="Delete this product"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#666', fontSize: 13, lineHeight: 1, padding: '0 2px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {p.fixtureId ? (
@@ -122,6 +150,7 @@ export default function ProductList(): React.ReactElement {
           </div>
         )
       })}
+      {showFieldSettings && <ProductFieldSettings onClose={() => setShowFieldSettings(false)} />}
     </div>
   )
 }
