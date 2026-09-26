@@ -5,6 +5,7 @@ import { useProjectStore } from '../../store/projectStore'
 import { useUiStore } from '../../store/uiStore'
 import { relinkAllProducts } from '../../utils/autoLinker'
 import ProductFieldSettings from './ProductFieldSettings'
+import ProductDetailModal from './ProductDetailModal'
 import type { Product } from '../../types'
 
 const itemBase: React.CSSProperties = {
@@ -37,6 +38,7 @@ export default function ProductList(): React.ReactElement {
   const deleteProduct = useProductStore((s) => s.deleteProduct)
   const [relinkMsg, setRelinkMsg] = useState('')
   const [showFieldSettings, setShowFieldSettings] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
   const unlinkedCount = products.filter((p) => !p.fixtureId).length
 
@@ -100,9 +102,10 @@ export default function ProductList(): React.ReactElement {
         return (
           <div
             key={p.id}
-            style={{ ...itemBase, cursor: p.fixtureId ? 'pointer' : 'default' }}
+            style={{ ...itemBase, cursor: 'pointer' }}
             onClick={() => p.fixtureId && highlightFixture(p.fixtureId)}
-            title={p.fixtureId ? 'Click to highlight this fixture' : undefined}
+            onDoubleClick={() => setEditingProduct(p)}
+            title={p.fixtureId ? 'Click to highlight this fixture · double-click to edit' : 'Double-click to edit'}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
               <span style={{ fontSize: 12, color: '#dde0e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.itemName}>
@@ -151,6 +154,7 @@ export default function ProductList(): React.ReactElement {
         )
       })}
       {showFieldSettings && <ProductFieldSettings onClose={() => setShowFieldSettings(false)} />}
+      {editingProduct && <ProductDetailModal product={editingProduct} onClose={() => setEditingProduct(null)} />}
     </div>
   )
 }

@@ -17,6 +17,13 @@ interface ProductStore {
   setFieldRequired: (fieldName: string, required: boolean) => void
   /** Removes a single product, e.g. one that was imported by mistake or is no longer carried */
   deleteProduct: (id: string) => void
+  /**
+   * Replaces one product's own fields wholesale (id/fixtureId/shopperVisible are
+   * preserved from the existing record) — a full replace, not a merge, so
+   * removing a custom field in the editor actually removes it rather than
+   * leaving the old value behind.
+   */
+  updateProduct: (id: string, fields: Record<string, unknown>) => void
   clearProducts: () => void
 }
 
@@ -40,6 +47,12 @@ export const useProductStore = create<ProductStore>((set) => ({
   })),
 
   deleteProduct: (id) => set((s) => ({ products: s.products.filter((p) => p.id !== id) })),
+
+  updateProduct: (id, fields) => set((s) => ({
+    products: s.products.map((p) =>
+      p.id === id ? { ...fields, id: p.id, fixtureId: p.fixtureId, shopperVisible: p.shopperVisible } as Product : p
+    )
+  })),
 
   clearProducts: () => set({ products: [], columnMap: {}, requiredFields: [] })
 }))
