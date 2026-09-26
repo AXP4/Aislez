@@ -36,7 +36,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function NewProjectDialog(): React.ReactElement {
+interface Props { onBack: () => void }
+
+export default function NewProjectDialog({ onBack }: Props): React.ReactElement {
   const { initProject } = useProjectStore()
 
   const [name, setName]         = useState('My Store')
@@ -92,6 +94,12 @@ export default function NewProjectDialog(): React.ReactElement {
       <div style={{ width: 420, background: '#1a1a2e', border: '1px solid #2e2e4a', borderRadius: 12, padding: 36, display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         <div>
+          <button onClick={onBack} style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            color: '#5a5a78', fontSize: 12, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 4
+          }}>
+            ← Back
+          </button>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#e0e0f0', marginBottom: 4 }}>New Project</div>
           <div style={{ fontSize: 13, color: '#5a5a78' }}>Set up your store before placing fixtures.</div>
         </div>

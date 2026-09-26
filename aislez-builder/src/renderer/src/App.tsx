@@ -917,7 +917,7 @@ export default function App(): React.ReactElement {
   }, [])
 
   if (!settings) {
-    if (showNewProject) return <NewProjectDialog />
+    if (showNewProject) return <NewProjectDialog onBack={() => setShowNewProject(false)} />
     return <StartScreen onNewProject={() => setShowNewProject(true)} />
   }
 
