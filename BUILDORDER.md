@@ -120,21 +120,23 @@
 
 ---
 
-## Phase 6 — Builder: Export
+## Phase 6 — Builder: Export ✅ Complete
 
 **Goal:** Builder exports a JSON data package that Shopper can load.
 
-### Steps
-1. Write exporter.js utility
-   - Takes current canvasStore + productStore state
-   - Strips internal-only fields based on shopperVisible toggles
-   - Builds the JSON data package structure
-   - Returns clean JSON object
-2. Add Export button to toolbar
-3. On export → run exporter.js → write JSON file via Electron file system API
-4. Show success message with file path
+> **Implementation note (September 2026):** Extended past the original fixtures-only sketch to include walls and entrances too (founder call) — without them, Shopper's map would just be floating fixture rectangles with no boundary or doors. `store` carries the real `storeOutline`/`perimeterThickness` rather than a derived pixel bounding box, for the same reason. Also confirmed as a deliberate design point: export is a completely separate code path from `.ifp` save/load, not a filtered view of it — `.ifp` must round-trip losslessly back into Builder, the data package never gets read by Builder again. See [ARCHITECTURE.md](ARCHITECTURE.md)'s "Save/Load and Export" section.
 
-**Test:** Build mock store, import mock CSV, export JSON. Open the JSON file and verify it contains fixtures and products with correct structure.
+### Steps
+1. ✅ Write exporter.ts utility (`buildDataPackage`)
+   - Takes current canvasStore + productStore (+ projectStore for store shape) state
+   - Strips internal-only fields based on shopperVisible toggles — dropped from the JSON entirely, not exported as null/empty
+   - Builds the JSON data package structure (store shape, fixtures, walls, entrances, products)
+   - Returns clean JSON object
+2. ✅ Add Export button to toolbar (+ File menu)
+3. ✅ On export → run exporter.ts → write JSON file via a native save dialog (Electron main process, `export:save` IPC handler)
+4. ✅ Show success message with file path
+
+**Test:** Build mock store, import mock CSV, export JSON. Open the JSON file and verify it contains fixtures and products with correct structure. Additionally: verify a non-shopper-visible field (e.g. location code, or a custom field like Department) is present in the saved `.ifp` but completely absent from the exported `datapackage.json` — founder-verified.
 
 ---
 
