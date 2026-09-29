@@ -14,7 +14,7 @@ Aislez has two independent applications that communicate through a single file f
 │  Canvas → Fixtures → Products   │
 │                                 │
 │  Save: project.ifp              │
-│  Export: datapackage.json [planned] │
+│  Export: datapackage.json       │
 └──────────────┬──────────────────┘
                │ datapackage.json
                ▼
@@ -28,7 +28,7 @@ Aislez has two independent applications that communicate through a single file f
 └─────────────────────────────────┘
 ```
 
-Builder is the only application that currently exists and runs. Shopper and the exported JSON data package are still design targets; the .ifp save/load format is built — see [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
+Builder is the only application that currently exists and runs. Shopper is the only remaining design target — .ifp save/load and the exported JSON data package are both built — see [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
 
 ---
 
@@ -49,7 +49,7 @@ Builder is the only application that currently exists and runs. Shopper and the 
 | Save/load `.ifp` project file, launch start screen | ✅ Built |
 | CSV import + column mapping + auto-linking + Relink | ✅ Built |
 | Product list sidebar (highlight-on-click, detail editor, per-field settings) | ✅ Built |
-| Export JSON data package | ⬜ Planned |
+| Export JSON data package (fixtures, walls, entrances, shopper-visible product fields) | ✅ Built |
 | Shopper app (any part of it) | ⬜ Not started |
 
 The rest of this document describes the built parts as they actually work, and the planned parts as design intent (clearly marked). See [BUILDORDER.md](BUILDORDER.md) for phase-by-phase sequencing.
@@ -58,7 +58,7 @@ The rest of this document describes the built parts as they actually work, and t
 
 ## File Formats
 
-`.ifp` is built (Phase 4); the JSON data package is still planned (Phase 6) — `types/index.ts` sketches its shape (`DataPackage`, `Product`), but there is no export code anywhere in the app yet.
+Both formats are built: `.ifp` (Phase 4) is Builder's own editable save file; the JSON data package (Phase 6) is the separate, stripped-down snapshot exported for Shopper.
 
 ### .ifp Project File (Builder saves/loads this — built)
 The full editable project. JSON under the hood, renamed .ifp. `ProjectFile` in `types/index.ts` mirrors real store state exactly (world units in meters/feet, not pixels) rather than the flat placeholder this section used to show:
@@ -104,39 +104,34 @@ The full editable project. JSON under the hood, renamed .ifp. `ProjectFile` in `
 
 `products`/`columnMap`/`requiredFields` are optional in the `ProjectFile` type specifically so a `.ifp` saved before Phase 5 still loads (`hydrateProject` defaults each to empty) — see **Save/Load** in Key Logic below for how save/load is actually wired, and **Products, CSV Import, and Auto-Linking** for what these three fields mean.
 
-### JSON Data Package (Shopper will load this — planned)
-Exported from Builder. Shopper-facing only — no internal fields.
+### JSON Data Package (Shopper will load this — built)
+Exported from Builder (`utils/exporter.ts`'s `buildDataPackage`). Shopper-facing only — internal-only fields are stripped out entirely, not just hidden. Includes walls and entrances (not part of the original sketch, added so Shopper's map reads as a real store rather than floating fixture rectangles), and `store` carries the actual `storeOutline`/`perimeterThickness` rather than a derived pixel bounding box:
 
 ```json
 {
   "version": "1.0",
   "store": {
     "name": "Mock Walmart - Section B",
-    "width": 1200,
-    "height": 800
+    "unit": "meters",
+    "storeOutline": [{ "x": 0, "y": 0 }, { "x": 30, "y": 0 }, { "x": 30, "y": 20 }, { "x": 0, "y": 20 }],
+    "perimeterThickness": [0.2, 0.2, 0.2, 0.2]
   },
   "fixtures": [
-    {
-      "id": "fixture_001",
-      "type": "shelf",
-      "locationCode": "B3-1",
-      "x": 120,
-      "y": 200,
-      "width": 80,
-      "height": 20,
-      "rotation": 0
-    }
+    { "id": "fixture_001", "type": "shelf", "label": "B3-1", "locationCode": "B3-1", "x": 2, "y": 3.3, "width": 1.2, "height": 0.5, "rotation": 0 }
+  ],
+  "walls": [
+    { "id": "wall_001", "x": 5, "y": 5, "width": 3, "height": 0.2, "rotation": 0 }
+  ],
+  "entrances": [
+    { "id": "entrance_001", "edgeIndex": 0, "offset": 10, "width": 1 }
   ],
   "products": [
-    {
-      "itemName": "Heinz Ketchup 500ml",
-      "price": 3.99,
-      "category": "Condiments",
-      "locationCode": "B3-1"
-    }
+    { "id": "product_001", "fixtureId": "fixture_001", "itemName": "Heinz Ketchup 500ml", "price": 3.99, "category": "Condiments" }
   ]
 }
 ```
+
+Note what's *not* here: no `sku`, no `locationCode`, no `Department`, no `shopperVisible` map on that product — in this example the retailer left those non-visible, so `stripProduct` (`exporter.ts`) drops them from the object rather than exporting them as `null`/empty. `id` and `fixtureId` are always kept regardless of visibility — Shopper needs `fixtureId` to know which fixture to highlight, and it isn't customer-facing text.
 
 ---
 
@@ -152,14 +147,14 @@ aislez-builder/
 │   └── dev.js                       # Clears ELECTRON_RUN_AS_NODE before launch
 ├── src/
 │   ├── main/
-│   │   └── index.ts                 # Electron main process, window, native menu (Undo/Redo/Delete/Save/Open via IPC), project:save/project:open file dialogs
+│   │   └── index.ts                 # Electron main process, window, native menu (Undo/Redo/Delete/Save/Open/Export via IPC), project:save/project:open/export:save file dialogs
 │   ├── preload/
 │   │   └── index.ts                 # Electron preload (context bridge) — exposes electron.ipcRenderer.invoke, used directly for file I/O, no extra API surface needed
 │   └── renderer/src/
 │       ├── main.tsx                 # React entry point
 │       ├── App.tsx                  # Root layout + Toolbar (contextual property panels per selection type); Ctrl+S/Ctrl+O and menu:action → save/open
 │       ├── types/
-│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings, ProjectFile, Product/ColumnMap/ShopperVisibility (built) + [planned] DataPackage shape
+│       │   └── index.ts             # Fixture, Wall, Entrance, ProjectSettings, ProjectFile, Product/ColumnMap/ShopperVisibility, DataPackage — all built
 │       ├── components/
 │       │   ├── Canvas/
 │       │   │   ├── StoreCanvas.tsx        # Konva Stage, zoom/pan, rubber-band select, drop handler
@@ -195,7 +190,8 @@ aislez-builder/
 │           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter/wall↔wall flush detection, self-intersection check
 │           ├── locationCode.ts      # Location code utilities
 │           ├── projectFile.ts       # serializeProject/hydrateProject — collect all store state (including products) into a ProjectFile, or replace store state with one
-│           ├── fileActions.ts       # saveProject/saveProjectAs/openProject — call the main process's file dialogs via IPC, wrap projectFile.ts
+│           ├── fileActions.ts       # saveProject/saveProjectAs/openProject/exportDataPackage — call the main process's file dialogs via IPC, wrap projectFile.ts/exporter.ts
+│           ├── exporter.ts          # buildDataPackage — pure transform: current store state → stripped-down, shopper-visible-only DataPackage
 │           ├── csvParser.ts         # parseCsv — hand-rolled RFC4180-ish parser (quoted fields, embedded commas/newlines, CRLF/LF)
 │           └── autoLinker.ts        # linkProductsToFixtures + relinkAllProducts — match product.locationCode to fixture.locationCode, set fixtureId
 ├── electron.vite.config.ts
@@ -280,12 +276,12 @@ Auto-linking (`autoLinker.ts`'s `linkProductsToFixtures`) matches `product.locat
 
 **Product editing** — double-clicking a product in `ProductList.tsx` opens `ProductDetailModal.tsx`: standard fields as dedicated inputs, custom fields as an editable, addable/removable key-value list. Saving calls `updateProduct` (a *full replace* of the product's own fields, not a merge — otherwise removing a custom field in the editor wouldn't actually remove it) and immediately calls `relinkAllProducts`, so editing Location Code takes effect without a separate Relink click. Single-clicking a linked product instead calls `selectFixture` + recenters the viewport on it (`highlightFixture` in `ProductList.tsx`) — same idea Shopper will eventually do with search results, just for the retailer's own use inside Builder.
 
-**Save/Load (.ifp) — built; Export — planned, not built**
-File I/O is main-process-only: `registerFileHandlers` in `src/main/index.ts` registers `ipcMain.handle('project:save'/'project:open', ...)`, using native `dialog.showSaveDialog`/`showOpenDialog` and plain `fs/promises` read/write — the renderer never touches the filesystem directly. The renderer side is `utils/projectFile.ts` (`serializeProject` reads all three data stores — canvas, project, and product — into a `ProjectFile`; `hydrateProject` does the reverse via `projectStore.loadProject` + `canvasStore.loadCanvas` + `productStore.importProducts`) and `utils/fileActions.ts` (`saveProject`/`saveProjectAs`/`openProject`, which call the IPC handlers and show a plain `window.alert` on failure or an invalid file). `saveProject` resaves to `currentFilePath` if one exists; `saveProjectAs` always prompts, regardless. `currentFilePath` (in `projectStore`) is set after a successful save-with-dialog or open, and reset to null by `initProject` (a brand-new project has nowhere to resave to yet). Loading discards undo/redo history and clears selection (`loadCanvas`), since both would reference a different project's state. `App.tsx` wires Ctrl+S/Ctrl+Shift+S/Ctrl+O directly (same pattern as the existing Ctrl+Z/Ctrl+Y) and extends the existing `menu:action` IPC channel for File > Save/Save As/Open, mirroring how Edit > Undo/Redo already round-trip through the renderer.
+**Save/Load (.ifp) and Export (datapackage.json) — both built, deliberately separate code paths**
+File I/O is main-process-only: `registerFileHandlers` in `src/main/index.ts` registers `ipcMain.handle('project:save'/'project:open'/'export:save', ...)`, using native `dialog.showSaveDialog`/`showOpenDialog` and plain `fs/promises` read/write — the renderer never touches the filesystem directly. The renderer side is `utils/projectFile.ts` (`serializeProject` reads all three data stores — canvas, project, and product — into a `ProjectFile`; `hydrateProject` does the reverse via `projectStore.loadProject` + `canvasStore.loadCanvas` + `productStore.importProducts`) and `utils/fileActions.ts` (`saveProject`/`saveProjectAs`/`openProject`/`exportDataPackage`, which call the IPC handlers and show a plain `window.alert` on failure, an invalid file, or an error). `saveProject` resaves to `currentFilePath` if one exists; `saveProjectAs` and `exportDataPackage` always prompt, regardless — an export has no "current file" to quietly resave to, since it's a one-way snapshot, not something you reopen. `currentFilePath` (in `projectStore`) is set after a successful save-with-dialog or open, and reset to null by `initProject` (a brand-new project has nowhere to resave to yet). Loading discards undo/redo history and clears selection (`loadCanvas`), since both would reference a different project's state. `App.tsx` wires Ctrl+S/Ctrl+Shift+S/Ctrl+O directly (same pattern as the existing Ctrl+Z/Ctrl+Y) and extends the existing `menu:action` IPC channel for File > Save/Save As/Open/Export, mirroring how Edit > Undo/Redo already round-trip through the renderer.
 
 `products`/`columnMap`/`requiredFields` were *not* included when `.ifp` save/load first shipped — `productStore` didn't exist yet at that point, and the omission wasn't caught until a retailer actually lost imported products across a save/reopen. Now that the mistake is on record: **any new field added to any store needs an explicit trip through `serializeProject`/`hydrateProject`/`isValidProjectFile`, or it silently doesn't survive a save.**
 
-Still planned: `exporter` will strip internal-only fields per `shopperVisible` toggles and write the JSON data package for Shopper (Phase 6) — that's a separate, Shopper-facing format from `.ifp`, not a reuse of it.
+Export (`utils/exporter.ts`'s `buildDataPackage`) is a genuinely separate transform from save/load, not a filtered view of the same code path — `.ifp` needs to round-trip losslessly back into Builder; the data package never gets read by Builder again, only by Shopper, so it can (and does) drop everything Shopper has no use for: `customFixtureTypes`, `wallDefaults`, `columnMap`, `requiredFields`, undo history, every non-shopper-visible product field, and the `shopperVisible` map itself (once applied, Shopper doesn't need to know it existed). `stripProduct` keeps only `id`, `fixtureId` (needed to highlight the right fixture, even though it's not customer-facing text), and whichever fields are actually marked visible — an unchecked field is *absent* from the JSON, not `null` or empty.
 
 ---
 
