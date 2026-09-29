@@ -1,5 +1,6 @@
 import { useProjectStore } from '../store/projectStore'
 import { serializeProject, hydrateProject, isValidProjectFile } from './projectFile'
+import { buildDataPackage } from './exporter'
 
 interface SaveResult {
   canceled: boolean
@@ -76,4 +77,25 @@ export async function openProject(): Promise<boolean> {
   hydrateProject(parsed)
   useProjectStore.getState().setCurrentFilePath(result.filePath ?? null)
   return true
+}
+
+/** Builds the data package and prompts a native save dialog to write it as JSON. Always prompts — an export is a one-off snapshot, there's no "current export file" to resave to. Returns the saved path on success. */
+export async function exportDataPackage(): Promise<string | null> {
+  const { settings } = useProjectStore.getState()
+  if (!settings) return null
+  const ipc = ipcRenderer()
+  if (!ipc) return null
+
+  let json: string
+  try {
+    json = JSON.stringify(buildDataPackage(), null, 2)
+  } catch (err) {
+    window.alert(`Couldn't export: ${(err as Error).message}`)
+    return null
+  }
+
+  const result: SaveResult = await ipc.invoke('export:save', json, settings.name)
+  if (result.error) { window.alert(`Couldn't export: ${result.error}`); return null }
+  if (result.canceled) return null
+  return result.filePath ?? null
 }

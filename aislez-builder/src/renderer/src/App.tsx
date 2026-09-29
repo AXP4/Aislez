@@ -11,7 +11,7 @@ import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
 import { useProductStore } from './store/productStore'
 import { getChainMembers, parseCode } from './utils/chain'
-import { saveProject, saveProjectAs, openProject } from './utils/fileActions'
+import { saveProject, saveProjectAs, openProject, exportDataPackage } from './utils/fileActions'
 import { WALL_COLOR } from './types'
 
 // ── Toolbar ─────────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ function IconBtn({
   )
 }
 
-function Toolbar({ onOpenSettings, onOpenImport }: { onOpenSettings: () => void; onOpenImport: () => void }): React.ReactElement {
+function Toolbar({ onOpenSettings, onOpenImport, onExport }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void }): React.ReactElement {
   const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
@@ -424,6 +424,13 @@ function Toolbar({ onOpenSettings, onOpenImport }: { onOpenSettings: () => void;
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </IconBtn>
+            <IconBtn onClick={onExport} title="Export Data Package for Shopper">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 8 12 3 17 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </IconBtn>
             {SEP}
@@ -885,6 +892,11 @@ export default function App(): React.ReactElement {
   const [showNewProject, setShowNewProject] = useState(false)
   const [showImport, setShowImport] = useState(false)
 
+  const handleExport = async (): Promise<void> => {
+    const filePath = await exportDataPackage()
+    if (filePath) window.alert(`Exported data package to:\n${filePath}`)
+  }
+
   // Global keyboard shortcuts + Ctrl tracking for canvas panning
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -919,6 +931,7 @@ export default function App(): React.ReactElement {
       else if (action === 'saveAs') void saveProjectAs()
       else if (action === 'open') void openProject()
       else if (action === 'import') setShowImport(true)
+      else if (action === 'export') void handleExport()
       // Chain-selected: delete not exposed from menu (double-click to detach first)
     }
     ipc?.on('menu:action', onMenuAction)
@@ -937,7 +950,7 @@ export default function App(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenImport={() => setShowImport(true)} />
+      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenImport={() => setShowImport(true)} onExport={() => { void handleExport() }} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside style={{
           width: 200, background: '#1e1e30',

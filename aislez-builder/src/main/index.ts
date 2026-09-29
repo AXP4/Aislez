@@ -44,6 +44,21 @@ function registerFileHandlers(): void {
       return { canceled: false, error: (err as Error).message }
     }
   })
+
+  ipcMain.handle('export:save', async (_event, json: string, projectName: string) => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Export Data Package for Shopper',
+        defaultPath: `${sanitizeFileName(projectName)}-datapackage.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+      if (result.canceled || !result.filePath) return { canceled: true }
+      await writeFile(result.filePath, json, 'utf-8')
+      return { canceled: false, filePath: result.filePath }
+    } catch (err) {
+      return { canceled: false, error: (err as Error).message }
+    }
+  })
 }
 
 function buildMenu(): void {
@@ -77,6 +92,10 @@ function buildMenu(): void {
         {
           label: 'Import Products (CSV)…',
           click: () => send('import')
+        },
+        {
+          label: 'Export Data Package…',
+          click: () => send('export')
         },
         { type: 'separator' },
         { role: 'quit', label: 'Exit' }

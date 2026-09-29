@@ -156,11 +156,12 @@ export type SidebarTab = 'fixtures' | 'products'
 
 // ─── File formats ────────────────────────────────────────────────────────────
 
-/** Shared store metadata used in both file formats */
+/** Store shape/scale info Shopper needs to draw the perimeter — same source-of-truth shapes as ProjectSettings, not a derived bounding box */
 export interface StoreMetadata {
   name: string
-  width: number
-  height: number
+  unit: Unit
+  storeOutline: { x: number; y: number }[]
+  perimeterThickness: number[]
 }
 
 /**
@@ -184,7 +185,10 @@ export interface ProjectFile {
 
 /**
  * JSON data package — exported from Builder, loaded by Shopper.
- * Internal fields stripped; only shopper-visible product fields included.
+ * Internal fields stripped; only shopper-visible product fields included
+ * (which fields those are varies per project, so a product entry here is a
+ * dynamic bag, not the full Product shape). Walls/entrances are included so
+ * Shopper's map reads as an actual store, not floating fixture rectangles.
  */
 export interface DataPackage {
   version: string
@@ -192,17 +196,28 @@ export interface DataPackage {
   fixtures: Array<{
     id: string
     type: FixtureType
-    locationCode: string
+    label: string
+    locationCode?: string
     x: number
     y: number
     width: number
     height: number
     rotation: number
   }>
-  products: Array<{
-    itemName: string
-    price?: number
-    category?: string
-    locationCode?: string
+  walls: Array<{
+    id: string
+    x: number
+    y: number
+    width: number
+    height: number
+    rotation: number
   }>
+  entrances: Array<{
+    id: string
+    edgeIndex: number
+    offset: number
+    width: number
+  }>
+  /** Each entry: `id` + `fixtureId` (if linked) + whichever fields are shopperVisible — never the internal-only ones */
+  products: Array<Record<string, unknown>>
 }
