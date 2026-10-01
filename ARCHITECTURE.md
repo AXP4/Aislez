@@ -21,14 +21,13 @@ Aislez has two independent applications that communicate through a single file f
 ┌─────────────────────────────────┐
 │           SHOPPER               │
 │      (React Browser App)        │
-│         [not started]           │
 │                                 │
 │  Load JSON → Render Map →       │
 │  Search → Highlight Fixture     │
 └─────────────────────────────────┘
 ```
 
-Builder is the only application that currently exists and runs. Shopper is the only remaining design target — .ifp save/load and the exported JSON data package are both built — see [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
+Both applications exist and run — Shopper lives in its own separate repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk but not part of this git history; see [Shopper Architecture](#shopper-architecture) below), consistent with the two connecting only through the exported JSON file, no shared code. See [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
 
 ---
 
@@ -50,7 +49,8 @@ Builder is the only application that currently exists and runs. Shopper is the o
 | CSV import + column mapping + auto-linking + Relink | ✅ Built |
 | Product list sidebar (highlight-on-click, detail editor, per-field settings) | ✅ Built |
 | Export JSON data package (fixtures, walls, entrances, shopper-visible product fields) | ✅ Built |
-| Shopper app (any part of it) | ⬜ Not started |
+| Shopper app — map, search, highlight-on-select, independent map zoom/pan | ✅ Built |
+| Shopper deployed to Netlify, demo landing page | ⬜ Planned (Phase 8) |
 
 The rest of this document describes the built parts as they actually work, and the planned parts as design intent (clearly marked). See [BUILDORDER.md](BUILDORDER.md) for phase-by-phase sequencing.
 
@@ -105,7 +105,7 @@ The full editable project. JSON under the hood, renamed .ifp. `ProjectFile` in `
 `products`/`columnMap`/`requiredFields` are optional in the `ProjectFile` type specifically so a `.ifp` saved before Phase 5 still loads (`hydrateProject` defaults each to empty) — see **Save/Load** in Key Logic below for how save/load is actually wired, and **Products, CSV Import, and Auto-Linking** for what these three fields mean.
 
 ### JSON Data Package (Shopper will load this — built)
-Exported from Builder (`utils/exporter.ts`'s `buildDataPackage`). Shopper-facing only — internal-only fields are stripped out entirely, not just hidden. Includes walls and entrances (not part of the original sketch, added so Shopper's map reads as a real store rather than floating fixture rectangles), and `store` carries the actual `storeOutline`/`perimeterThickness` rather than a derived pixel bounding box:
+Exported from Builder (`utils/exporter.ts`'s `buildDataPackage`). Shopper-facing only — internal-only fields are stripped out entirely, not just hidden. Includes walls and entrances (not part of the original sketch, added so Shopper's map reads as a real store rather than floating fixture rectangles), and `store` carries the actual `storeOutline`/`perimeterThickness` rather than a derived pixel bounding box. Each fixture's `color`/`abbrev` are resolved by Builder at export time (`resolveFixtureColor`/`resolveFixtureAbbrev`, `FixtureLayer.tsx`) — covers both built-in types and the project's own `CustomFixtureType`s — so Shopper never needs a color table of its own; same idea for `store.wallColor`. This was a real bug caught during Phase 7 dev: the first version of the exporter only resolved built-in-type colors, so any fixture using a retailer-defined custom type (a plain `type: 'custom'` with no color info) exported with nothing to render:
 
 ```json
 {
@@ -114,10 +114,11 @@ Exported from Builder (`utils/exporter.ts`'s `buildDataPackage`). Shopper-facing
     "name": "Mock Walmart - Section B",
     "unit": "meters",
     "storeOutline": [{ "x": 0, "y": 0 }, { "x": 30, "y": 0 }, { "x": 30, "y": 20 }, { "x": 0, "y": 20 }],
-    "perimeterThickness": [0.2, 0.2, 0.2, 0.2]
+    "perimeterThickness": [0.2, 0.2, 0.2, 0.2],
+    "wallColor": "#2c3e50"
   },
   "fixtures": [
-    { "id": "fixture_001", "type": "shelf", "label": "B3-1", "locationCode": "B3-1", "x": 2, "y": 3.3, "width": 1.2, "height": 0.5, "rotation": 0 }
+    { "id": "fixture_001", "type": "shelf", "label": "B3-1", "locationCode": "B3-1", "color": "#4A90D9", "abbrev": "SH", "x": 2, "y": 3.3, "width": 1.2, "height": 0.5, "rotation": 0 }
   ],
   "walls": [
     { "id": "wall_001", "x": 5, "y": 5, "width": 3, "height": 0.2, "rotation": 0 }
@@ -285,58 +286,60 @@ Export (`utils/exporter.ts`'s `buildDataPackage`) is a genuinely separate transf
 
 ---
 
-## Shopper Architecture — Not Started
+## Shopper Architecture
 
-Nothing below exists yet — no `aislez-shopper` directory, no code. This section is the design target for Phase 7, kept here so the plan doesn't get lost, not a description of anything running today.
+A separate Vite + React + TypeScript project, in its own git repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`) — deliberately disconnected from Builder's codebase; the only thing joining them is the `datapackage.json` contract. Not yet deployed (Netlify deploy + landing page is Phase 8); runs today via `npm run dev`.
 
-### Folder Structure (planned)
+### Folder Structure (current)
 ```
 aislez-shopper/
 ├── public/
-│   └── index.html
+│   └── datapackage.json       # Static asset for local dev — the real deploy fetches whatever file is placed here (or wherever Builder's export lands)
 ├── src/
-│   ├── App.jsx                  # Root, loads data package
+│   ├── App.tsx                 # Root: header/search, results panel, map
+│   ├── types.ts                 # Hand-mirrored copy of Builder's DataPackage shape — separate repos, no shared module
 │   ├── components/
-│   │   ├── SearchBar.jsx        # Item search input
-│   │   ├── SearchResults.jsx    # List of matching products
-│   │   ├── StoreMap.jsx         # Renders store map from JSON
-│   │   ├── FixtureHighlight.jsx # Blink/highlight selected fixture
-│   │   └── ItemCard.jsx         # Shows item name, price, location
+│   │   ├── SearchBar.tsx        # Text input with a magnifying-glass icon
+│   │   ├── SearchResults.tsx    # Matching products; empty/no-match states
+│   │   ├── ItemCard.tsx         # Selected product: name, price, custom fields, location badge
+│   │   └── StoreMap.tsx         # Canvas 2D map: outline/walls/entrances/fixtures, independent zoom/pan, blink-then-highlight
 │   ├── hooks/
-│   │   ├── useSearch.js         # Filter products by query
-│   │   └── useDataPackage.js    # Load and parse JSON data package
+│   │   └── useDataPackage.ts    # fetch('/datapackage.json') once on mount
 │   └── utils/
-│       └── search.js            # Search logic (name, category match)
-├── package.json
-└── netlify.toml
+│       └── search.ts            # Filter by itemName/category, case-insensitive partial match
+├── index.html
+├── vite.config.ts
+└── package.json
 ```
 
-### Data Flow in Shopper (planned)
+### Data Flow
 ```
-Load datapackage.json
+Load datapackage.json (fetch, on mount)
         ↓
-Parse fixtures + products into memory
+User types in the search bar
         ↓
-User types search query
+searchProducts() filters by itemName/category (empty query → no results shown)
         ↓
-Filter products by name / category match
+SearchResults list renders matches
         ↓
-Show results list
+User clicks a result
         ↓
-User selects a product
+Look up data.fixtures by the product's own fixtureId (not a re-match on locationCode —
+auto-linking already happened in Builder; the id is already on the product)
         ↓
-Find fixture with matching locationCode
+StoreMap blinks that fixture's border a few times, then holds a steady highlight
         ↓
-Highlight + blink that fixture on the map
-        ↓
-Show ItemCard (name, price, location code)
+ItemCard shows name, price, any other shopper-visible fields, and the location
+(or "Not currently on the floor" if the product has no fixtureId)
 ```
 
-### Map Rendering (planned)
-- Store map is drawn using the fixtures array from the JSON package
-- Each fixture rendered as a rectangle (or shape) at its x/y/width/height coordinates
-- Use React + plain Canvas API (no Konva needed in Shopper — read only, no dragging)
-- On item select: apply blinking CSS animation to the matching fixture element
+### Map Rendering
+Plain Canvas 2D — no Konva, no library; read-only, so none of Builder's drag machinery is needed. `StoreMap.tsx` fits the `storeOutline` polygon to its container, strokes the perimeter in `store.wallColor` while skipping any stretch covered by an `Entrance` (computed as gaps per edge, not a separate shape), fills interior `walls` as solid rects, and draws each fixture as a rect in its own baked-in `color` with its `locationCode` (falling back to `abbrev`) as a label. Fixture/wall `rotation` is always `0` in practice (Builder's rotate actions swap width/height instead of a real transform), so Shopper never handles rotated rects.
+
+The map also has its own independent **scroll-to-zoom (centered on cursor) and drag-to-pan**, separate from the browser's page zoom — a page can't scope native browser zoom to one element, and relying on it would zoom the header/search bar too, which is the wrong UX. A small "Reset view" button appears once zoomed/panned away from the fitted default. This mirrors Builder's own canvas zoom/pan pattern, independently re-implemented since the two apps share no code.
+
+### Why fixtureId, not a locationCode re-match
+The original design sketch (pre-Phase-5) had Shopper re-deriving the fixture by matching `product.locationCode` against each fixture's own code at search time. Once Phase 5 added `autoLinker.ts`'s `fixtureId` directly onto each product, that became unnecessary — Builder has already done the matching once, correctly, and `fixtureId` ships straight through the export. Shopper just looks it up; it never needs to know what a location code even is.
 
 ---
 
