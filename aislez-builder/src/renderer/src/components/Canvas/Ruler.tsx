@@ -91,7 +91,7 @@ function draw(
     }
     ctx.stroke()
 
-    const showLabel = isMajor && idx % labelRatio === 0 && unitVal > 0.0001
+    const showLabel = isMajor && idx % labelRatio === 0
     if (showLabel) {
       ctx.fillStyle = '#5a5a7a'
       const label = String(Math.round(unitVal * 1000) / 1000)
