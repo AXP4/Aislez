@@ -114,7 +114,8 @@ export default function PerimeterDrawLayer(): React.ReactElement {
       storeWidth:   Math.round((maxX - minX) * 100) / 100,
       storeHeight:  Math.round((maxY - minY) * 100) / 100,
       storeOutline: shifted,
-      perimeterThickness: makePerimeterThickness(unit, shifted.length)
+      perimeterThickness: makePerimeterThickness(unit, shifted.length),
+      outlineDrawn: true
     })
     useUiStore.getState().setActiveTool('select')  // also clears toolPoints
   }, [])

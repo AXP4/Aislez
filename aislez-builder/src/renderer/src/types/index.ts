@@ -21,6 +21,8 @@ export interface ProjectSettings {
   perimeterThickness: number[]
   /** Floorplan reference image, or null if none uploaded */
   backgroundImage: BackgroundImage | null
+  /** False only for a freshly-created Custom-shape project whose outline is still the meaningless default-size placeholder — set true once the Draw tool's sketch is finalized. Missing on older save files, which always had a real outline already — treat `undefined` the same as `true`. */
+  outlineDrawn?: boolean
 }
 
 /**

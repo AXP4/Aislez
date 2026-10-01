@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useProjectStore, DEFAULT_DIMENSIONS, DEFAULT_GRID_SNAP, MIN_GRID_SNAP, MAX_GRID_SNAP, makePerimeterThickness } from '../store/projectStore'
-import { useUiStore } from '../store/uiStore'
 import type { Unit, ProjectSettings } from '../types'
 
 type StoreShape = 'rectangle' | 'custom'
@@ -73,7 +72,7 @@ export default function NewProjectDialog({ onBack }: Props): React.ReactElement 
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap,
         storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length),
-        backgroundImage: null
+        backgroundImage: null, outlineDrawn: true
       }
       initProject(settings)
     } else {
@@ -82,10 +81,14 @@ export default function NewProjectDialog({ onBack }: Props): React.ReactElement 
       const settings: ProjectSettings = {
         name: name.trim(), unit, storeWidth: dims.width, storeHeight: dims.height, gridSnap,
         storeOutline: outline, perimeterThickness: makePerimeterThickness(unit, outline.length),
-        backgroundImage: null
+        backgroundImage: null, outlineDrawn: false
       }
       initProject(settings)
-      useUiStore.getState().setActiveTool('draw')
+      // Lands in 'select', not 'draw' — a Custom shape needs its placeholder outline hidden (see
+      // StoreCanvas's outlineDrawn check) but shouldn't force Draw mode immediately: a retailer tracing
+      // over a real floorplan photo needs to upload and calibrate it first, which Draw mode's full-canvas
+      // click-to-place-a-corner layer would otherwise block entirely. The toolbar's "Draw Outline" button
+      // (shown whenever outlineDrawn is false) lets them enter Draw mode whenever they're ready.
     }
   }
 

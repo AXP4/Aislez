@@ -465,6 +465,18 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
             <path d="M21 15l-5-5L5 21"/>
           </svg>
         </IconBtn>
+        {settings?.outlineDrawn === false && (
+          <button
+            onClick={() => setActiveTool(activeTool === 'draw' ? 'select' : 'draw')}
+            title="Draw your store's outline — click corners, type exact lengths, close the loop near the start"
+            style={activeTool === 'draw' ? { ...BTN_ACTIVE, gap: 5 } : { ...BTN, gap: 5 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3l7 18 2-7 7-2z"/>
+            </svg>
+            Draw Outline
+          </button>
+        )}
       </div>
 
       {/* ── CENTER: fixture properties ── only when a fixture is selected ── */}

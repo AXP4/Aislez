@@ -390,11 +390,15 @@ export default function StoreCanvas(): React.ReactElement {
               which itself stays the true interior boundary. Containment is
               handled separately by rectInsidePolygon against that same outline,
               so thickening the perimeter here never eats into floor space.
-              Hidden while actively drawing a custom outline — until it's
-              finalized, storeOutline is just a throwaway placeholder rectangle
-              (initProject needs some valid outline immediately), not something
-              that should ever be visible. */}
-          {activeTool !== 'draw' && <PerimeterWallLayer />}
+              Hidden until outlineDrawn is true — a freshly-created Custom-shape
+              project's storeOutline is just a throwaway placeholder rectangle
+              (initProject needs some valid outline immediately) until the Draw
+              tool's sketch is finalized, not something that should ever be
+              visible. Independent of activeTool: a retailer can leave Draw mode
+              (e.g. to calibrate the background photo) without the placeholder
+              flashing into view. Missing outlineDrawn (older save files) means
+              "already had a real outline" — never hide it for those. */}
+          {settings?.outlineDrawn !== false && <PerimeterWallLayer />}
 
           <WallLayer />
           <EntranceLayer />

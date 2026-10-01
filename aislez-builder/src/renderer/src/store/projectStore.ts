@@ -62,7 +62,7 @@ export const DEFAULT_DIMENSIONS: Record<Unit, { width: number; height: number }>
   feet:   { width: 100, height: 65 }
 }
 
-type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness'>>
+type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness' | 'outlineDrawn'>>
 
 interface ProjectStore {
   settings: ProjectSettings | null
