@@ -70,7 +70,7 @@ function useHtmlImage(src: string | undefined): HTMLImageElement | null {
 export default function BackgroundLayer(): React.ReactElement {
   const settings = useProjectStore((s) => s.settings)
   const ppu = useProjectStore((s) => s.pixelsPerUnit)
-  const updateBackgroundImage = useProjectStore((s) => s.updateBackgroundImage)
+  const updateBackgroundImage = useProjectStore((s) => s.updateBackgroundImageWithHistory)
   const zoom = useUiStore((s) => s.zoom)
   const selected = useCanvasStore((s) => s.backgroundImageSelected)
   const selectBackgroundImage = useCanvasStore((s) => s.selectBackgroundImage)

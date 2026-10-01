@@ -48,25 +48,48 @@ function IconBtn({
   )
 }
 
+// Three independent undo/redo tiers, checked in priority order: a click-to-place tool's placed
+// points (sketching an outline, calibrating the photo) first, then the background photo's own
+// move/resize/calibrate history, then canvasStore's fixture/wall/entrance history. Separate
+// stacks, not one merged chronological timeline — Undo resolves to whichever tier is
+// active/non-empty, not strictly "the single most recent action across all of them". Shared by
+// the toolbar buttons, Ctrl+Z/Ctrl+Y, and the Electron Edit-menu actions so all three stay in sync.
+function performUndo(): void {
+  const ui = useUiStore.getState()
+  if (ui.activeTool !== 'select' && ui.toolPoints.length > 0) { ui.popToolPoint(); return }
+  const project = useProjectStore.getState()
+  if (project.pastBackground.length > 0) { project.undoBackground(); return }
+  useCanvasStore.getState().undo()
+}
+
+function performRedo(): void {
+  const project = useProjectStore.getState()
+  if (project.futureBackground.length > 0) { project.redoBackground(); return }
+  useCanvasStore.getState().redo()
+}
+
 function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void; onCloseProject: () => void }): React.ReactElement {
-  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore, activeTool, setActiveTool, toolPoints, popToolPoint } = useUiStore()
+  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore, activeTool, setActiveTool, toolPoints } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
-    deleteFixture, rotateFixture, past, future, undo, redo,
+    deleteFixture, rotateFixture, past, future,
     fixtures, moveFixture, moveChain, setFixtureCode,
     deleteChain, rotateChain, duplicateSelected, deleteMulti, rotateMulti, moveMulti,
     walls, selectedWallId, deleteWall, rotateWall, moveWall, resizeWall,
     entrances, selectedEntranceId, deleteEntrance, moveEntrance, resizeEntrance,
     selectedPerimeterEdge, backgroundImageSelected, selectBackgroundImage
   } = useCanvasStore()
-  const { settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness, setBackgroundImage, updateBackgroundImage, rotateBackgroundImage, clearBackgroundImage } = useProjectStore()
+  const {
+    settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness, setBackgroundImage,
+    updateBackgroundImage, rotateBackgroundImage, clearBackgroundImage,
+    pastBackground, futureBackground
+  } = useProjectStore()
 
-  // While a click-to-place tool (sketching an outline, calibrating the background photo) is active,
-  // Undo steps back through its placed points instead of the canvas history
+  // Just for the buttons' disabled state — performUndo/performRedo (shared with Ctrl+Z/Ctrl+Y and
+  // the Electron menu) hold the actual tier-priority logic.
   const isPointToolActive = activeTool !== 'select' && toolPoints.length > 0
-  const canUndo = isPointToolActive || past.length > 0
-  const canRedo = future.length > 0
-  const handleUndo = (): void => { if (isPointToolActive) popToolPoint(); else undo() }
+  const canUndo = isPointToolActive || pastBackground.length > 0 || past.length > 0
+  const canRedo = futureBackground.length > 0 || future.length > 0
 
   const selectedFixture  = fixtures.find(f => f.id === selectedFixtureId) ?? null
   const anchorFixture    = fixtures.find(f => f.id === selectedChainAnchor) ?? null
@@ -875,12 +898,12 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
 
       {/* ── RIGHT: Undo / Redo + Zoom ── always visible ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-        <IconBtn onClick={handleUndo} title="Undo (Ctrl+Z)" disabled={!canUndo}>
+        <IconBtn onClick={performUndo} title="Undo (Ctrl+Z)" disabled={!canUndo}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
           </svg>
         </IconBtn>
-        <IconBtn onClick={redo} title="Redo (Ctrl+Y)" disabled={!canRedo}>
+        <IconBtn onClick={performRedo} title="Redo (Ctrl+Y)" disabled={!canRedo}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"/>
           </svg>
@@ -967,13 +990,8 @@ export default function App(): React.ReactElement {
       if (!e.ctrlKey && !e.metaKey) return
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        const ui = useUiStore.getState()
-        if (ui.activeTool !== 'select' && ui.toolPoints.length > 0) ui.popToolPoint()
-        else useCanvasStore.getState().undo()
-      }
-      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); useCanvasStore.getState().redo() }
+      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); performUndo() }
+      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); performRedo() }
       if (e.key.toLowerCase() === 's') {
         e.preventDefault()
         if (e.shiftKey) void saveProjectAs()
@@ -992,12 +1010,8 @@ export default function App(): React.ReactElement {
     const ipc = (window as any).electron?.ipcRenderer
     const onMenuAction = (_: unknown, action: string): void => {
       const canvas = useCanvasStore.getState()
-      if (action === 'undo') {
-        const ui = useUiStore.getState()
-        if (ui.activeTool !== 'select' && ui.toolPoints.length > 0) ui.popToolPoint()
-        else canvas.undo()
-      }
-      else if (action === 'redo') canvas.redo()
+      if (action === 'undo') performUndo()
+      else if (action === 'redo') performRedo()
       else if (action === 'delete' && canvas.selectedFixtureId) canvas.deleteFixture(canvas.selectedFixtureId)
       else if (action === 'save') void saveProject()
       else if (action === 'saveAs') void saveProjectAs()

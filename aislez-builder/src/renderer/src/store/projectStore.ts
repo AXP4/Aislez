@@ -64,6 +64,10 @@ export const DEFAULT_DIMENSIONS: Record<Unit, { width: number; height: number }>
 
 type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness' | 'outlineDrawn'>>
 
+/** One undo/redo step for the background image — just the whole BackgroundImage (or null), snapshotted before a move/resize/calibrate commits. Separate from canvasStore's fixture/wall history since the image lives in projectStore. */
+interface BackgroundHistoryEntry { backgroundImage: BackgroundImage | null }
+const MAX_BACKGROUND_HISTORY = 50
+
 interface ProjectStore {
   settings: ProjectSettings | null
   /** Pixels per real-world unit (derived from settings.unit) */
@@ -97,6 +101,12 @@ interface ProjectStore {
   setBackgroundImage: (data: string, naturalWidth: number, naturalHeight: number) => void
   /** Reposition/resize/fade the current background image */
   updateBackgroundImage: (updates: Partial<Pick<BackgroundImage, 'x' | 'y' | 'width' | 'height' | 'opacity' | 'locked'>>) => void
+  /** Like updateBackgroundImage, but also records the pre-change position/size so Ctrl+Z/the toolbar Undo button can step it back. Used for move (drag-end), resize (corner drag-end), and calibrate — one-shot, easy-to-trigger-by-accident actions — not for continuous updates like the opacity slider, which would flood the history with one entry per tick. */
+  updateBackgroundImageWithHistory: (updates: Partial<Pick<BackgroundImage, 'x' | 'y' | 'width' | 'height'>>) => void
+  pastBackground: BackgroundHistoryEntry[]
+  futureBackground: BackgroundHistoryEntry[]
+  undoBackground: () => void
+  redoBackground: () => void
   /** Rotate the background image 90° clockwise, in place around its center */
   rotateBackgroundImage: () => void
   clearBackgroundImage: () => void
@@ -114,6 +124,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   customFixtureTypes: [],
   wallDefaults: makeWallDefaults('meters'),
   currentFilePath: null,
+  pastBackground: [],
+  futureBackground: [],
 
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
 
@@ -122,15 +134,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       settings, ...derive(settings),
       customFixtureTypes: makeBuiltinTypes(settings.unit),
       wallDefaults: makeWallDefaults(settings.unit),
-      currentFilePath: null
+      currentFilePath: null,
+      pastBackground: [], futureBackground: []
     })
   },
 
   loadProject: (settings, customFixtureTypes, wallDefaults) => {
-    set({ settings, ...derive(settings), customFixtureTypes, wallDefaults })
+    set({ settings, ...derive(settings), customFixtureTypes, wallDefaults, pastBackground: [], futureBackground: [] })
   },
 
-  closeProject: () => set({ settings: null, currentFilePath: null }),
+  closeProject: () => set({ settings: null, currentFilePath: null, pastBackground: [], futureBackground: [] }),
 
   updateSettings: (updates) => {
     set((state) => {
@@ -214,6 +227,35 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   updateBackgroundImage: (updates) => set((s) => {
     if (!s.settings?.backgroundImage) return s
     return { settings: { ...s.settings, backgroundImage: { ...s.settings.backgroundImage, ...updates } } }
+  }),
+
+  updateBackgroundImageWithHistory: (updates) => set((s) => {
+    if (!s.settings?.backgroundImage) return s
+    return {
+      settings: { ...s.settings, backgroundImage: { ...s.settings.backgroundImage, ...updates } },
+      pastBackground: [...s.pastBackground.slice(-(MAX_BACKGROUND_HISTORY - 1)), { backgroundImage: s.settings.backgroundImage }],
+      futureBackground: []
+    }
+  }),
+
+  undoBackground: () => set((s) => {
+    if (!s.settings || s.pastBackground.length === 0) return s
+    const prev = s.pastBackground[s.pastBackground.length - 1]
+    return {
+      settings: { ...s.settings, backgroundImage: prev.backgroundImage },
+      pastBackground: s.pastBackground.slice(0, -1),
+      futureBackground: [{ backgroundImage: s.settings.backgroundImage }, ...s.futureBackground]
+    }
+  }),
+
+  redoBackground: () => set((s) => {
+    if (!s.settings || s.futureBackground.length === 0) return s
+    const next = s.futureBackground[0]
+    return {
+      settings: { ...s.settings, backgroundImage: next.backgroundImage },
+      pastBackground: [...s.pastBackground, { backgroundImage: s.settings.backgroundImage }],
+      futureBackground: s.futureBackground.slice(1)
+    }
   }),
 
   clearBackgroundImage: () => set((s) => {

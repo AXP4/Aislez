@@ -24,7 +24,7 @@ const CALIBRATE_COLOR = '#F5A623'
 
 /** Applies a two-point calibration: rescales the background image so `a`→`b` measures `realDistance` world units, and resets its position to (0,0). */
 function applyCalibration(a: ToolPoint, b: ToolPoint, realDistance: number): void {
-  const { settings, updateBackgroundImage } = useProjectStore.getState()
+  const { settings, updateBackgroundImageWithHistory } = useProjectStore.getState()
   const bg = settings?.backgroundImage
   if (!bg || realDistance <= 0) return
   const currentDist = Math.hypot(b.x - a.x, b.y - a.y)
@@ -32,7 +32,7 @@ function applyCalibration(a: ToolPoint, b: ToolPoint, realDistance: number): voi
   const scale = realDistance / currentDist
   const newWidth  = Math.round(bg.width  * scale * 100) / 100
   const newHeight = Math.round(bg.height * scale * 100) / 100
-  updateBackgroundImage({ x: 0, y: 0, width: newWidth, height: newHeight })
+  updateBackgroundImageWithHistory({ x: 0, y: 0, width: newWidth, height: newHeight })
   useUiStore.getState().setActiveTool('select')  // also clears toolPoints
 }
 
