@@ -181,6 +181,7 @@ export default function BackgroundLayer(): React.ReactElement {
 
   if (!bg || !htmlImage) return <Layer />
 
+  const locked = bg.locked ?? false
   const px = bg.x * ppu
   const py = bg.y * ppu
   const pw = bg.width * ppu
@@ -193,7 +194,7 @@ export default function BackgroundLayer(): React.ReactElement {
         ref={groupRef}
         x={px}
         y={py}
-        draggable
+        draggable={!locked}
         onDragStart={handleGroupDragStart}
         onDragEnd={handleGroupDragEnd}
         onClick={(e) => { e.cancelBubble = true; selectBackgroundImage(true) }}
@@ -205,12 +206,12 @@ export default function BackgroundLayer(): React.ReactElement {
           {...imageAttrsForBox({ x: 0, y: 0, w: pw, h: ph }, bg.rotation)}
           rotation={bg.rotation}
           opacity={bg.opacity}
-          stroke={selected ? '#ffffff' : 'transparent'}
+          stroke={selected ? (locked ? '#8a8aa0' : '#ffffff') : 'transparent'}
           strokeWidth={selected ? 1.5 / zoom : 0}
-          onMouseEnter={(e) => setCursor(e, 'move')}
+          onMouseEnter={(e) => setCursor(e, locked ? 'default' : 'move')}
           onMouseLeave={(e) => setCursor(e, 'default')}
         />
-        {selected && CORNERS.map((corner) => {
+        {selected && !locked && CORNERS.map((corner) => {
           const c = cornerOfRect(corner, { x: 0, y: 0, w: pw, h: ph })
           const cursor = corner === 'tl' || corner === 'br' ? 'nwse-resize' : 'nesw-resize'
           return (

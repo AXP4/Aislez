@@ -96,7 +96,7 @@ interface ProjectStore {
   /** Set/replace the floorplan reference image; default placement covers the store's bounding box, aspect ratio preserved */
   setBackgroundImage: (data: string, naturalWidth: number, naturalHeight: number) => void
   /** Reposition/resize/fade the current background image */
-  updateBackgroundImage: (updates: Partial<Pick<BackgroundImage, 'x' | 'y' | 'width' | 'height' | 'opacity'>>) => void
+  updateBackgroundImage: (updates: Partial<Pick<BackgroundImage, 'x' | 'y' | 'width' | 'height' | 'opacity' | 'locked'>>) => void
   /** Rotate the background image 90° clockwise, in place around its center */
   rotateBackgroundImage: () => void
   clearBackgroundImage: () => void

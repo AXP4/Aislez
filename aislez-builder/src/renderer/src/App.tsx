@@ -825,6 +825,25 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
               style={{ width: 70 }}
             />
             {SEP}
+            <button
+              onClick={() => updateBackgroundImage({ locked: !(settings.backgroundImage!.locked ?? false) })}
+              title={settings.backgroundImage!.locked ? 'Unlock photo (currently locked in place)' : 'Lock photo in place — prevents accidental drag/resize'}
+              style={settings.backgroundImage!.locked ? { ...BTN_ACTIVE, gap: 5 } : { ...BTN, gap: 5 }}
+            >
+              {settings.backgroundImage!.locked ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="11" width="14" height="10" rx="2"/>
+                  <path d="M8 11V7a4 4 0 018 0v4"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="11" width="14" height="10" rx="2"/>
+                  <path d="M8 11V7a4 4 0 017.8-1.3"/>
+                </svg>
+              )}
+              {settings.backgroundImage!.locked ? 'Locked' : 'Lock'}
+            </button>
+            {SEP}
             <button onClick={() => rotateBackgroundImage()} title="Rotate 90°"
               style={{ ...BTN, gap: 5 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

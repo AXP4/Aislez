@@ -45,6 +45,8 @@ export interface BackgroundImage {
   opacity: number
   /** 90° increments only: 0, 90, 180, or 270 */
   rotation: number
+  /** When true, the drag-to-move group and resize handles are disabled so it can't be bumped while working on top of it — Rotate/Calibrate (deliberate button actions) still work. Missing/undefined means unlocked. */
+  locked?: boolean
 }
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
