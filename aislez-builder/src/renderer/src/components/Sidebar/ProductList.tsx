@@ -21,16 +21,27 @@ function customFields(p: Product): [string, unknown][] {
   return Object.entries(p).filter(([k, v]) => !KNOWN_KEYS.has(k) && v !== undefined && v !== '')
 }
 
-/** Selects the product's fixture (existing selection highlight) and centers the canvas on it, so an off-screen fixture is actually visible. */
+/** Margin of surrounding floor (world units) kept visible around a highlighted fixture — enough to
+ *  see which aisle/neighbors it's in, not just the one shelf filling the whole screen. */
+const HIGHLIGHT_MARGIN = 4
+
+/** Selects the product's fixture (existing selection highlight) and zooms/centers the canvas on
+ *  it. Centering alone isn't enough on a large store (100+ m across): at whatever zoom level the
+ *  retailer was already at, a single ~1m shelf is still an invisible speck. Reuses fitToStore's
+ *  zoom-to-bounding-box logic (same as the toolbar's "Fit to Store" button) on a small box around
+ *  the fixture instead of the whole store, so it reliably zooms in regardless of starting zoom. */
 function highlightFixture(fixtureId: string): void {
   const fixture = useCanvasStore.getState().fixtures.find((f) => f.id === fixtureId)
   if (!fixture) return
   useCanvasStore.getState().selectFixture(fixtureId)
   const { pixelsPerUnit } = useProjectStore.getState()
-  const { zoom, stageWidth, stageHeight, setViewport } = useUiStore.getState()
-  const cx = (fixture.x + fixture.width / 2) * pixelsPerUnit
-  const cy = (fixture.y + fixture.height / 2) * pixelsPerUnit
-  setViewport(zoom, stageWidth / 2 - cx * zoom, stageHeight / 2 - cy * zoom)
+  const { fitToStore } = useUiStore.getState()
+  fitToStore(
+    (fixture.x - HIGHLIGHT_MARGIN) * pixelsPerUnit,
+    (fixture.y - HIGHLIGHT_MARGIN) * pixelsPerUnit,
+    (fixture.x + fixture.width + HIGHLIGHT_MARGIN) * pixelsPerUnit,
+    (fixture.y + fixture.height + HIGHLIGHT_MARGIN) * pixelsPerUnit
+  )
 }
 
 export default function ProductList(): React.ReactElement {
