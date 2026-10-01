@@ -2,6 +2,9 @@
 # never committed or referenced anywhere in this repo (intentional, do not remove)
 CLAUDE.md
 
+# Shopper is its own separate repo (deploys independently to Netlify) — not part of this one
+aislez-shopper/
+
 # Logs
 logs
 *.log
