@@ -48,7 +48,7 @@ function IconBtn({
   )
 }
 
-function Toolbar({ onOpenSettings, onOpenImport, onExport }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void }): React.ReactElement {
+function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void; onCloseProject: () => void }): React.ReactElement {
   const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
@@ -438,6 +438,13 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport }: { onOpenSettings: (
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+              </svg>
+            </IconBtn>
+            <IconBtn onClick={onCloseProject} title="Close Project (back to start screen)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
             </IconBtn>
           </>
@@ -897,6 +904,13 @@ export default function App(): React.ReactElement {
     if (filePath) window.alert(`Exported data package to:\n${filePath}`)
   }
 
+  const handleCloseProject = (): void => {
+    if (!window.confirm('Close this project? Any unsaved changes will be lost.')) return
+    useCanvasStore.getState().loadCanvas([], [], [])
+    useProductStore.getState().clearProducts()
+    useProjectStore.getState().closeProject()
+  }
+
   // Global keyboard shortcuts + Ctrl tracking for canvas panning
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -932,6 +946,7 @@ export default function App(): React.ReactElement {
       else if (action === 'open') void openProject()
       else if (action === 'import') setShowImport(true)
       else if (action === 'export') void handleExport()
+      else if (action === 'closeProject') handleCloseProject()
       // Chain-selected: delete not exposed from menu (double-click to detach first)
     }
     ipc?.on('menu:action', onMenuAction)
@@ -950,7 +965,12 @@ export default function App(): React.ReactElement {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <Toolbar onOpenSettings={() => setSettingsOpen(true)} onOpenImport={() => setShowImport(true)} onExport={() => { void handleExport() }} />
+      <Toolbar
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenImport={() => setShowImport(true)}
+        onExport={() => { void handleExport() }}
+        onCloseProject={handleCloseProject}
+      />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <aside style={{
           width: 200, background: '#1e1e30',

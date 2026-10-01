@@ -98,6 +98,11 @@ function buildMenu(): void {
           click: () => send('export')
         },
         { type: 'separator' },
+        {
+          label: 'Close Project',
+          click: () => send('closeProject')
+        },
+        { type: 'separator' },
         { role: 'quit', label: 'Exit' }
       ]
     },

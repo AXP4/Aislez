@@ -77,6 +77,8 @@ interface ProjectStore {
   currentFilePath: string | null
   setCurrentFilePath: (path: string | null) => void
   initProject: (settings: ProjectSettings) => void
+  /** Returns to the launch start screen — settings go back to null, which is what App.tsx checks to decide what to render. Caller is responsible for clearing canvasStore/productStore too, so a later New Project doesn't inherit the closed project's fixtures/products. */
+  closeProject: () => void
   /** Replace all project state with a loaded file's contents (unlike initProject, doesn't regenerate fixture types/wall defaults from unit — restores exactly what was saved) */
   loadProject: (settings: ProjectSettings, customFixtureTypes: CustomFixtureType[], wallDefaults: WallDefaults) => void
   /** Update mutable project settings after creation (unit is immutable) */
@@ -127,6 +129,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   loadProject: (settings, customFixtureTypes, wallDefaults) => {
     set({ settings, ...derive(settings), customFixtureTypes, wallDefaults })
   },
+
+  closeProject: () => set({ settings: null, currentFilePath: null }),
 
   updateSettings: (updates) => {
     set((state) => {
