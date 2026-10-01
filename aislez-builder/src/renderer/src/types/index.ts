@@ -162,6 +162,8 @@ export interface StoreMetadata {
   unit: Unit
   storeOutline: { x: number; y: number }[]
   perimeterThickness: number[]
+  /** Builder's WALL_COLOR, baked in at export time — walls/perimeter are always this one color, so Shopper doesn't need the constant itself */
+  wallColor: string
 }
 
 /**
@@ -198,6 +200,9 @@ export interface DataPackage {
     type: FixtureType
     label: string
     locationCode?: string
+    /** Resolved by Builder at export time (built-in FIXTURE_COLORS or the project's own CustomFixtureType) — Shopper never needs a color table of its own */
+    color: string
+    abbrev: string
     x: number
     y: number
     width: number

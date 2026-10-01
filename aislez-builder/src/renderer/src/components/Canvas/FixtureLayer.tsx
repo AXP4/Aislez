@@ -48,14 +48,14 @@ const FIXTURE_ABBREV: Record<FixtureType, string> = {
   custom:   'CU'
 }
 
-function resolveFixtureColor(fixture: Fixture, customTypes: CustomFixtureType[]): string {
+export function resolveFixtureColor(fixture: Fixture, customTypes: CustomFixtureType[]): string {
   if (fixture.type === 'custom' && fixture.customTypeId) {
     return customTypes.find(t => t.id === fixture.customTypeId)?.color ?? FIXTURE_COLORS.custom
   }
   return FIXTURE_COLORS[fixture.type]
 }
 
-function resolveFixtureAbbrev(fixture: Fixture, customTypes: CustomFixtureType[]): string {
+export function resolveFixtureAbbrev(fixture: Fixture, customTypes: CustomFixtureType[]): string {
   if (fixture.type === 'custom' && fixture.customTypeId) {
     return customTypes.find(t => t.id === fixture.customTypeId)?.abbrev ?? FIXTURE_ABBREV.custom
   }
