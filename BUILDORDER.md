@@ -140,27 +140,29 @@
 
 ---
 
-## Phase 7 — Shopper: Map + Search
+## Phase 7 — Shopper: Map + Search ✅ Complete
 
 **Goal:** A browser app that loads the JSON data package and lets users search for products.
 
-### Steps
-1. Create new React project (separate repo, deploys to Netlify)
-2. Add the exported mock store datapackage.json as a static file in /public
-3. Write useDataPackage.js hook — load and parse the JSON on startup
-4. Render the store map:
-   - Draw each fixture as a labeled rectangle at its x/y/width/height coordinates
-   - Use plain Canvas API or SVG (no Konva needed — read only)
-   - Each fixture type gets a distinct color matching Builder
-5. Build SearchBar.jsx — text input, searches as user types
-6. Write search.js utility — filter products by itemName and category (case insensitive, partial match)
-7. Build SearchResults.jsx — list of matching products showing name, price, location code
-8. On result click:
-   - Find fixture with matching locationCode
-   - Apply blinking CSS animation to that fixture on the map
-   - Show ItemCard with name, price, location code
+> **Implementation note (September 2026):** Built with real exported data from a founder test store (not a hand-made mock CSV), which immediately surfaced a real Phase 6 bug — the exporter didn't resolve color/abbrev for retailer-defined custom fixture types, only built-ins — fixed before Shopper work continued (see `ARCHITECTURE.md`). Also deviated from the original plan in a few ways, all founder-confirmed: `.jsx`/`.js` became `.tsx`/`.ts` for type-safety parity with Builder; the map also renders `walls`/`entrances` (added to the Phase 6 export) so it reads as a real store, not floating rectangles; result click looks up the fixture by the product's own `fixtureId` rather than re-matching `locationCode` (Builder's auto-linker already did that matching once); and the map got its own independent scroll-to-zoom/drag-to-pan (separate from the browser's page zoom, which can't be scoped to one element) plus a real visual design pass (header/search bar, card-style results, branded item card) pulled forward from Phase 8 after the first functional-but-plain pass didn't look presentable enough. `aislez-shopper/` is its own git repo (per the original "separate repo" plan), sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`.
 
-**Test:** Open Shopper in browser, search "ketchup", result appears, click it, fixture blinks on map.
+### Steps
+1. ✅ Create new React project (separate repo — Netlify deploy itself is Phase 8)
+2. ✅ Add an exported real-store datapackage.json as a static file in /public
+3. ✅ Write useDataPackage.ts hook — load and parse the JSON on startup
+4. ✅ Render the store map:
+   - Draw each fixture as a labeled rectangle at its x/y/width/height coordinates
+   - Use plain Canvas API (no Konva needed — read only), plus independent zoom/pan
+   - Each fixture type gets a distinct color matching Builder (baked in by the exporter, built-in and custom types alike)
+5. ✅ Build SearchBar.tsx — text input, searches as user types
+6. ✅ Write search.ts utility — filter products by itemName and category (case insensitive, partial match)
+7. ✅ Build SearchResults.tsx — list of matching products showing name and price
+8. ✅ On result click:
+   - Look up the fixture via the product's own `fixtureId`
+   - Blink that fixture's border a few times, then hold a steady highlight
+   - Show ItemCard with name, price, any other shopper-visible fields, and location (or an explicit "not on the floor" state for an unlinked product)
+
+**Test:** Open Shopper in browser, search "ketchup", result appears, click it, fixture blinks on map — founder-verified with a real two-product test store (one linked, one deliberately unlinked to confirm that path too).
 
 ---
 
