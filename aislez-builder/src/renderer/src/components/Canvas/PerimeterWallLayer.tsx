@@ -158,8 +158,29 @@ export default function PerimeterWallLayer(): React.ReactElement {
     useProjectStore.getState().setPerimeterEdgeThickness(edgeIndex, thickness)
   }, [])
 
+  // storeOutline/handleClick are computed before the early return below, and
+  // handleClick stays a useCallback despite that — every hook in this
+  // component must run on every render regardless of whether settings is set
+  // yet, or a render where settings is briefly falsy throws "Rendered fewer
+  // hooks than expected" and blanks the whole canvas (this crashed for real:
+  // calibrating the background photo then entering Draw mode hit it).
+  const storeOutline = settings?.storeOutline ?? []
+
+  const handleClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>): void => {
+    e.cancelBubble = true
+    const stage = e.target.getStage()
+    const pos = stage?.getRelativePointerPosition()
+    if (!pos) return
+    const worldPt = { x: pos.x / ppu, y: pos.y / ppu }
+    let best: { edgeIndex: number; distSq: number } | null = null
+    for (let i = 0; i < storeOutline.length; i++) {
+      const proj = projectOntoSegment(worldPt, storeOutline[i], storeOutline[(i + 1) % storeOutline.length])
+      if (!best || proj.distSq < best.distSq) best = { edgeIndex: i, distSq: proj.distSq }
+    }
+    if (best) selectPerimeterEdge(best.edgeIndex)
+  }, [storeOutline, ppu, selectPerimeterEdge])
+
   if (!settings) return <Layer />
-  const { storeOutline } = settings
 
   const tracePoly = (ctx: Konva.Context, pts: Point[], reverse = false): void => {
     const n = pts.length
@@ -244,20 +265,6 @@ export default function PerimeterWallLayer(): React.ReactElement {
     traceBandRing(ctx)
     ctx.fillStrokeShape(shape)
   }
-
-  const handleClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>): void => {
-    e.cancelBubble = true
-    const stage = e.target.getStage()
-    const pos = stage?.getRelativePointerPosition()
-    if (!pos) return
-    const worldPt = { x: pos.x / ppu, y: pos.y / ppu }
-    let best: { edgeIndex: number; distSq: number } | null = null
-    for (let i = 0; i < storeOutline.length; i++) {
-      const proj = projectOntoSegment(worldPt, storeOutline[i], storeOutline[(i + 1) % storeOutline.length])
-      if (!best || proj.distSq < best.distSq) best = { edgeIndex: i, distSq: proj.distSq }
-    }
-    if (best) selectPerimeterEdge(best.edgeIndex)
-  }, [storeOutline, ppu, selectPerimeterEdge])
 
   const setCursor = (e: Konva.KonvaEventObject<MouseEvent>, cursor: string): void => {
     const stage = e.target.getStage()
