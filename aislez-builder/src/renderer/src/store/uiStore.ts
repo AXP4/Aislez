@@ -16,11 +16,22 @@ interface TooltipState {
   y: number
 }
 
+/** A point placed so far by a click-to-place tool (world units) — the perimeter sketch tool's corners, or the calibrate tool's two reference clicks */
+export interface ToolPoint { x: number; y: number }
+
 interface UiStore {
   gridMode: GridMode
   activeTool: ActiveTool
   cycleGridMode: () => void
+  /** Changing tools always discards any in-progress click sequence (sketch corners, calibration points) — same as the old per-tool layer unmounting used to */
   setActiveTool: (tool: ActiveTool) => void
+
+  // ── Click-to-place tools (Draw mode, Calibrate mode) ────────────────────────
+  /** Points placed so far by whichever click-to-place tool is active */
+  toolPoints: ToolPoint[]
+  pushToolPoint: (p: ToolPoint) => void
+  /** Undo the last placed point — shared by Backspace, Ctrl+Z, and the toolbar Undo button while a click-to-place tool is active */
+  popToolPoint: () => void
   tooltip: TooltipState
   showTooltip: (text: string, x: number, y: number) => void
   hideTooltip: () => void
@@ -54,7 +65,11 @@ export const useUiStore = create<UiStore>((set, get) => ({
   gridMode: 'dots',
   activeTool: 'select',
   cycleGridMode: () => set((s) => ({ gridMode: CYCLE[s.gridMode] })),
-  setActiveTool: (tool) => set({ activeTool: tool }),
+  setActiveTool: (tool) => set({ activeTool: tool, toolPoints: [] }),
+
+  toolPoints: [],
+  pushToolPoint: (p) => set((s) => ({ toolPoints: [...s.toolPoints, p] })),
+  popToolPoint: () => set((s) => ({ toolPoints: s.toolPoints.slice(0, -1) })),
 
   tooltip: { visible: false, text: '', x: 0, y: 0 },
   showTooltip: (text, x, y) => set({ tooltip: { visible: true, text, x, y } }),

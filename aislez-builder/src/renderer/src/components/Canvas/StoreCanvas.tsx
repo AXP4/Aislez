@@ -420,7 +420,7 @@ export default function StoreCanvas(): React.ReactElement {
           borderRadius: 6, padding: '7px 14px', fontSize: 12, lineHeight: 1.5,
           whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 20
         }}>
-          Click to place corners &middot; type a number for an exact length &middot; click the start point to finish &middot; Esc to cancel
+          Click to place corners &middot; type a number for an exact length &middot; click the start point to finish &middot; Backspace to undo last corner &middot; Esc to cancel
         </div>
       )}
 

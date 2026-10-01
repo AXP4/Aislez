@@ -2,12 +2,10 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { Layer, Rect, Line, Circle, Text } from 'react-konva'
 import type Konva from 'konva'
 import { useProjectStore, makePerimeterThickness } from '../../store/projectStore'
-import { useUiStore } from '../../store/uiStore'
+import { useUiStore, type ToolPoint as Point } from '../../store/uiStore'
 import { updateGuides, GUIDE_THRESHOLD_PX } from './FixtureLayer'
 import { wouldSegmentSelfIntersect } from '../../utils/geometry'
 import { WALL_COLOR } from '../../types'
-
-interface Point { x: number; y: number }  // world units
 
 const CLOSE_THRESHOLD_PX = 14
 const HUGE = 100000  // covers the visible viewport at any pan/zoom for hit-testing
@@ -19,9 +17,8 @@ const HUGE = 100000  // covers the visible viewport at any pan/zoom for hit-test
  */
 export default function PerimeterDrawLayer(): React.ReactElement {
   const { pixelsPerUnit: ppu, gridSizePx, settings } = useProjectStore()
-  const { zoom, gridMode, panX, panY } = useUiStore()
+  const { zoom, gridMode, panX, panY, toolPoints: points, pushToolPoint, popToolPoint } = useUiStore()
 
-  const [points, setPoints] = useState<Point[]>([])
   const [cursor, setCursor] = useState<Point | null>(null)
   const [numberBuffer, setNumberBuffer] = useState('')
 
@@ -102,26 +99,24 @@ export default function PerimeterDrawLayer(): React.ReactElement {
   useEffect(() => () => updateGuides(null, null), [])
 
   const finalize = useCallback((): void => {
-    setPoints((pts) => {
-      if (pts.length < 3) return pts
-      const minX = Math.min(...pts.map((p) => p.x))
-      const minY = Math.min(...pts.map((p) => p.y))
-      const maxX = Math.max(...pts.map((p) => p.x))
-      const maxY = Math.max(...pts.map((p) => p.y))
-      const shifted = pts.map((p) => ({
-        x: Math.round((p.x - minX) * 100) / 100,
-        y: Math.round((p.y - minY) * 100) / 100
-      }))
-      const unit = useProjectStore.getState().settings!.unit
-      useProjectStore.getState().updateSettings({
-        storeWidth:   Math.round((maxX - minX) * 100) / 100,
-        storeHeight:  Math.round((maxY - minY) * 100) / 100,
-        storeOutline: shifted,
-        perimeterThickness: makePerimeterThickness(unit, shifted.length)
-      })
-      useUiStore.getState().setActiveTool('select')
-      return []
+    const pts = useUiStore.getState().toolPoints
+    if (pts.length < 3) return
+    const minX = Math.min(...pts.map((p) => p.x))
+    const minY = Math.min(...pts.map((p) => p.y))
+    const maxX = Math.max(...pts.map((p) => p.x))
+    const maxY = Math.max(...pts.map((p) => p.y))
+    const shifted = pts.map((p) => ({
+      x: Math.round((p.x - minX) * 100) / 100,
+      y: Math.round((p.y - minY) * 100) / 100
+    }))
+    const unit = useProjectStore.getState().settings!.unit
+    useProjectStore.getState().updateSettings({
+      storeWidth:   Math.round((maxX - minX) * 100) / 100,
+      storeHeight:  Math.round((maxY - minY) * 100) / 100,
+      storeOutline: shifted,
+      perimeterThickness: makePerimeterThickness(unit, shifted.length)
     })
+    useUiStore.getState().setActiveTool('select')  // also clears toolPoints
   }, [])
 
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent>): void => {
@@ -135,9 +130,9 @@ export default function PerimeterDrawLayer(): React.ReactElement {
     e.cancelBubble = true
     if (e.evt.button !== 0 || !preview || blocked) return
     if (isClosing) { finalize(); return }
-    setPoints((pts) => [...pts, preview!])
+    pushToolPoint(preview!)
     setNumberBuffer('')
-  }, [preview, isClosing, finalize, blocked])
+  }, [preview, isClosing, finalize, blocked, pushToolPoint])
 
   // Keyboard: digits build an exact length, Enter commits it, Backspace undoes
   // a digit or the last corner, Escape cancels the number or the whole sketch.
@@ -152,19 +147,19 @@ export default function PerimeterDrawLayer(): React.ReactElement {
 
       if (e.key === 'Escape') {
         if (buf) { setNumberBuffer(''); return }
-        setPoints([]); setCursor(null)
-        useUiStore.getState().setActiveTool('select')
+        setCursor(null)
+        useUiStore.getState().setActiveTool('select')  // also clears toolPoints
         return
       }
       if (e.key === 'Backspace') {
         if (buf) { setNumberBuffer((b) => b.slice(0, -1)); return }
-        setPoints((pts) => pts.slice(0, -1))
+        popToolPoint()
         return
       }
       if (e.key === 'Enter') {
         if (buf && pv && lastPt && !isBlocked) {
           if (closing) finalize()
-          else setPoints((pts) => [...pts, pv])
+          else pushToolPoint(pv)
           setNumberBuffer('')
         }
         return

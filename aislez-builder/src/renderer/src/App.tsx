@@ -49,7 +49,7 @@ function IconBtn({
 }
 
 function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void; onCloseProject: () => void }): React.ReactElement {
-  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore } = useUiStore()
+  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore, activeTool, toolPoints, popToolPoint } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
     deleteFixture, rotateFixture, past, future, undo, redo,
@@ -61,8 +61,12 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
   } = useCanvasStore()
   const { settings, formatUnitShort, pixelsPerUnit, setPerimeterEdgeThickness, setBackgroundImage, updateBackgroundImage, rotateBackgroundImage, clearBackgroundImage } = useProjectStore()
 
-  const canUndo = past.length > 0
+  // While a click-to-place tool (sketching an outline, calibrating the background photo) is active,
+  // Undo steps back through its placed points instead of the canvas history
+  const isPointToolActive = activeTool !== 'select' && toolPoints.length > 0
+  const canUndo = isPointToolActive || past.length > 0
   const canRedo = future.length > 0
+  const handleUndo = (): void => { if (isPointToolActive) popToolPoint(); else undo() }
 
   const selectedFixture  = fixtures.find(f => f.id === selectedFixtureId) ?? null
   const anchorFixture    = fixtures.find(f => f.id === selectedChainAnchor) ?? null
@@ -826,7 +830,7 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
 
       {/* ── RIGHT: Undo / Redo + Zoom ── always visible ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-        <IconBtn onClick={undo} title="Undo (Ctrl+Z)" disabled={!canUndo}>
+        <IconBtn onClick={handleUndo} title="Undo (Ctrl+Z)" disabled={!canUndo}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
           </svg>
@@ -918,7 +922,12 @@ export default function App(): React.ReactElement {
       if (!e.ctrlKey && !e.metaKey) return
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); useCanvasStore.getState().undo() }
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        const ui = useUiStore.getState()
+        if (ui.activeTool !== 'select' && ui.toolPoints.length > 0) ui.popToolPoint()
+        else useCanvasStore.getState().undo()
+      }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); useCanvasStore.getState().redo() }
       if (e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -938,7 +947,11 @@ export default function App(): React.ReactElement {
     const ipc = (window as any).electron?.ipcRenderer
     const onMenuAction = (_: unknown, action: string): void => {
       const canvas = useCanvasStore.getState()
-      if (action === 'undo') canvas.undo()
+      if (action === 'undo') {
+        const ui = useUiStore.getState()
+        if (ui.activeTool !== 'select' && ui.toolPoints.length > 0) ui.popToolPoint()
+        else canvas.undo()
+      }
       else if (action === 'redo') canvas.redo()
       else if (action === 'delete' && canvas.selectedFixtureId) canvas.deleteFixture(canvas.selectedFixtureId)
       else if (action === 'save') void saveProject()
