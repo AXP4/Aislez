@@ -49,7 +49,7 @@ function IconBtn({
 }
 
 function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { onOpenSettings: () => void; onOpenImport: () => void; onExport: () => void; onCloseProject: () => void }): React.ReactElement {
-  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore, activeTool, toolPoints, popToolPoint } = useUiStore()
+  const { gridMode, cycleGridMode, zoom, zoomIn, zoomOut, resetZoom, fitToStore, activeTool, setActiveTool, toolPoints, popToolPoint } = useUiStore()
   const {
     selectedFixtureId, selectedChainAnchor, multiSelectedIds,
     deleteFixture, rotateFixture, past, future, undo, redo,
@@ -820,6 +820,20 @@ function Toolbar({ onOpenSettings, onOpenImport, onExport, onCloseProject }: { o
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
               Rotate
+            </button>
+            <button
+              onClick={() => setActiveTool(activeTool === 'calibrate' ? 'select' : 'calibrate')}
+              title="Click two points a known distance apart on the photo to scale it precisely"
+              style={{ ...BTN, gap: 5, ...(activeTool === 'calibrate' ? { borderColor: '#F5A623', color: '#F5A623' } : {}) }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="20" x2="20" y2="4"/>
+                <line x1="7" y1="20" x2="4" y2="17"/>
+                <line x1="11" y1="16" x2="8" y2="13"/>
+                <line x1="15" y1="12" x2="12" y2="9"/>
+                <line x1="20" y1="7" x2="17" y2="4"/>
+              </svg>
+              Calibrate
             </button>
             <button onClick={() => { clearBackgroundImage(); selectBackgroundImage(false) }} style={BTN_DANGER}>
               Remove

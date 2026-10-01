@@ -146,7 +146,7 @@ export interface Product {
 
 // ─── UI state ────────────────────────────────────────────────────────────────
 
-export type ActiveTool = 'select' | 'draw'
+export type ActiveTool = 'select' | 'draw' | 'calibrate'
 
 export type ActiveModal = 'import' | 'export' | 'properties' | null
 

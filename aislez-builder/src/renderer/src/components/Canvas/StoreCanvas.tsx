@@ -9,6 +9,7 @@ import EntranceLayer from './EntranceLayer'
 import ArrowLayer from './ArrowLayer'
 import PerimeterDrawLayer from './PerimeterDrawLayer'
 import PerimeterWallLayer from './PerimeterWallLayer'
+import CalibrateLayer, { CalibrateInput } from './CalibrateLayer'
 import Ruler, { RULER_SIZE } from './Ruler'
 import { useCanvasStore, FIXTURE_DEFAULTS_BY_UNIT } from '../../store/canvasStore'
 import { getChainMembers } from '../../utils/chain'
@@ -198,7 +199,7 @@ export default function StoreCanvas(): React.ReactElement {
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>): void => {
       e.preventDefault()
-      if (!stageRef.current || !settings || activeTool === 'draw') return
+      if (!stageRef.current || !settings || activeTool !== 'select') return
 
       // Wall drop
       if (e.dataTransfer.getData('itemType') === 'wall') {
@@ -295,7 +296,7 @@ export default function StoreCanvas(): React.ReactElement {
 
   const handleStageMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): void => {
-      if (activeTool === 'draw') return
+      if (activeTool !== 'select') return
       if (e.evt.button !== 0) return
       if (e.target !== e.target.getStage()) return  // only on empty canvas
       if (!stageRef.current) return
@@ -310,7 +311,7 @@ export default function StoreCanvas(): React.ReactElement {
 
   const handleStageClick = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>): void => {
-      if (activeTool === 'draw') return
+      if (activeTool !== 'select') return
       if (didRubberBand.current) { didRubberBand.current = false; return }
       if (!e.evt.ctrlKey && e.target === e.target.getStage()) deselectAll()
     },
@@ -400,6 +401,7 @@ export default function StoreCanvas(): React.ReactElement {
           <FixtureLayer />
           <ArrowLayer />
           {activeTool === 'draw' && <PerimeterDrawLayer />}
+          {activeTool === 'calibrate' && <CalibrateLayer />}
           {/* Rubber band selection rectangle — always mounted, hidden when inactive */}
           <Layer listening={false}>
             <Rect
@@ -423,6 +425,8 @@ export default function StoreCanvas(): React.ReactElement {
           Click to place corners &middot; type a number for an exact length &middot; click the start point to finish &middot; Backspace to undo last corner &middot; Esc to cancel
         </div>
       )}
+
+      {activeTool === 'calibrate' && <CalibrateInput />}
 
       {tooltip.visible && (
         <div style={{
