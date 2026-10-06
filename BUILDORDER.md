@@ -180,14 +180,16 @@
 
 **Goal:** The Netlify demo is clean, impressive, and self-explanatory to a recruiter.
 
+> **Implementation note (October 2026):** A few things landed ahead of or outside this phase's original step order, all founder-confirmed. Builder was packaged as a standalone portable `.exe` via `electron-builder` (not in the original plan — the founder wanted Builder actually downloadable/runnable, not just shown via video; see `ARCHITECTURE.md`). Shopper's map background color became retailer-configurable from Builder's Project Settings (flows through the exporter), and the perimeter wall rendering was fixed from patchy per-edge strokes to one clean filled band — both bugs/gaps noticed while testing with the founder's real "Walmart Sage Hill" demo store. UI polish, the onboarding hint, and mobile responsiveness (steps 3-5) were done before the landing page and Netlify deploy (steps 1, 2, 6), since there was no live Shopper link yet to point a landing page at.
+
 ### Steps
 1. Build a landing page with two clear buttons: "Store Builder Demo" and "Shopper Demo"
    - Builder Demo: short video or GIF showing Builder in action (screen recording)
    - Shopper Demo: links to the live Shopper browser app
 2. Add a brief explanation on the landing page (2-3 sentences max, no jargon)
-3. Polish Shopper UI — clean typography, clear map, obvious search bar
-4. Add a "How to use" tooltip or onboarding hint in Shopper (first time only)
-5. Ensure Shopper works on mobile screen sizes
+3. ✅ Polish Shopper UI — clean typography, clear map, obvious search bar
+4. ✅ Add a "How to use" tooltip or onboarding hint in Shopper (first time only)
+5. ✅ Ensure Shopper works on mobile screen sizes
 6. Deploy to Netlify
 
 **Test:** Send the Netlify link to someone unfamiliar with the project. They should understand what it does and be able to find a product within 30 seconds.
