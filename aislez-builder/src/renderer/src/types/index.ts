@@ -2,6 +2,9 @@
 
 export type Unit = 'meters' | 'feet'
 
+/** Default for ProjectSettings.mapBackgroundColor — also what Shopper itself falls back to for a data package exported before this field existed. */
+export const DEFAULT_MAP_BACKGROUND_COLOR = '#1a1a2e'
+
 export interface ProjectSettings {
   name: string
   unit: Unit
@@ -23,6 +26,8 @@ export interface ProjectSettings {
   backgroundImage: BackgroundImage | null
   /** False only for a freshly-created Custom-shape project whose outline is still the meaningless default-size placeholder — set true once the Draw tool's sketch is finalized. Missing on older save files, which always had a real outline already — treat `undefined` the same as `true`. */
   outlineDrawn?: boolean
+  /** Shopper-only: the page color around the outside of the store map (never the floor itself, which Shopper always keeps neutral/light for fixture readability). Missing means DEFAULT_MAP_BACKGROUND_COLOR. */
+  mapBackgroundColor?: string
 }
 
 /**
@@ -168,6 +173,8 @@ export interface StoreMetadata {
   perimeterThickness: number[]
   /** Builder's WALL_COLOR, baked in at export time — walls/perimeter are always this one color, so Shopper doesn't need the constant itself */
   wallColor: string
+  /** Page color around the outside of the store map in Shopper — never the floor itself */
+  mapBackgroundColor: string
 }
 
 /**

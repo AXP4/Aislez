@@ -62,7 +62,7 @@ export const DEFAULT_DIMENSIONS: Record<Unit, { width: number; height: number }>
   feet:   { width: 100, height: 65 }
 }
 
-type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness' | 'outlineDrawn'>>
+type SettingsUpdate = Partial<Pick<ProjectSettings, 'name' | 'unit' | 'storeWidth' | 'storeHeight' | 'gridSnap' | 'storeOutline' | 'perimeterThickness' | 'outlineDrawn' | 'mapBackgroundColor'>>
 
 /** One undo/redo step for the background image — just the whole BackgroundImage (or null), snapshotted before a move/resize/calibrate commits. Separate from canvasStore's fixture/wall history since the image lives in projectStore. */
 interface BackgroundHistoryEntry { backgroundImage: BackgroundImage | null }

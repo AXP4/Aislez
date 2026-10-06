@@ -1,5 +1,5 @@
 import type { DataPackage, Product } from '../types'
-import { WALL_COLOR } from '../types'
+import { WALL_COLOR, DEFAULT_MAP_BACKGROUND_COLOR } from '../types'
 import { useProjectStore } from '../store/projectStore'
 import { useCanvasStore } from '../store/canvasStore'
 import { useProductStore } from '../store/productStore'
@@ -33,7 +33,8 @@ export function buildDataPackage(): DataPackage {
       unit: settings.unit,
       storeOutline: settings.storeOutline,
       perimeterThickness: settings.perimeterThickness,
-      wallColor: WALL_COLOR
+      wallColor: WALL_COLOR,
+      mapBackgroundColor: settings.mapBackgroundColor ?? DEFAULT_MAP_BACKGROUND_COLOR
     },
     fixtures: fixtures.map((f) => ({
       id: f.id, type: f.type, label: f.label, locationCode: f.locationCode,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useProjectStore, MIN_GRID_SNAP, MAX_GRID_SNAP, makePerimeterThickness } from '../store/projectStore'
 import { useCanvasStore } from '../store/canvasStore'
-import type { Unit } from '../types'
+import { DEFAULT_MAP_BACKGROUND_COLOR, type Unit } from '../types'
 
 const INPUT: React.CSSProperties = {
   width: '100%', padding: '8px 12px',
@@ -34,6 +34,7 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
   const [width, setWidth]       = useState(settings?.storeWidth   ?? 30)
   const [height, setHeight]     = useState(settings?.storeHeight  ?? 20)
   const [gridSnap, setGridSnap] = useState(settings?.gridSnap     ?? 0.1)
+  const [mapBg, setMapBg]       = useState(settings?.mapBackgroundColor ?? DEFAULT_MAP_BACKGROUND_COLOR)
   const [error, setError]       = useState('')
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
       setName(settings.name); setUnit(settings.unit)
       setWidth(settings.storeWidth); setHeight(settings.storeHeight)
       setGridSnap(settings.gridSnap)
+      setMapBg(settings.mapBackgroundColor ?? DEFAULT_MAP_BACKGROUND_COLOR)
     }
   }, [settings])
 
@@ -80,7 +82,7 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
         }
       : {}
 
-    updateSettings({ name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap, ...outlineUpdate })
+    updateSettings({ name: name.trim(), unit, storeWidth: width, storeHeight: height, gridSnap, mapBackgroundColor: mapBg, ...outlineUpdate })
     onClose()
   }
 
@@ -146,6 +148,18 @@ export default function ProjectSettingsModal({ onClose }: Props): React.ReactEle
             <span style={{ fontSize: 11, color: '#5a5a78', whiteSpace: 'nowrap' }}>
               {MIN_GRID_SNAP} – {MAX_GRID_SNAP} {unitLabel}
             </span>
+          </div>
+        </Field>
+
+        <Field label="Shopper Map Background">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input type="color" value={mapBg} onChange={(e) => setMapBg(e.target.value)}
+              style={{ width: 40, height: 32, padding: 0, border: '1px solid #3a3a5a', borderRadius: 6, background: 'none', cursor: 'pointer' }} />
+            <input style={{ ...INPUT, flex: 1 }} value={mapBg}
+              onChange={(e) => setMapBg(e.target.value)} />
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: '#5a5a78' }}>
+            Only the area around your store in Shopper — the floor inside stays light so fixtures stay readable.
           </div>
         </Field>
 
