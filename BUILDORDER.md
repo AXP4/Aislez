@@ -154,7 +154,7 @@
 
 **Goal:** A browser app that loads the JSON data package and lets users search for products.
 
-> **Implementation note (September 2026):** Built with real exported data from a founder test store (not a hand-made mock CSV), which immediately surfaced a real Phase 6 bug — the exporter didn't resolve color/abbrev for retailer-defined custom fixture types, only built-ins — fixed before Shopper work continued (see `ARCHITECTURE.md`). Also deviated from the original plan in a few ways, all founder-confirmed: `.jsx`/`.js` became `.tsx`/`.ts` for type-safety parity with Builder; the map also renders `walls`/`entrances` (added to the Phase 6 export) so it reads as a real store, not floating rectangles; result click looks up the fixture by the product's own `fixtureId` rather than re-matching `locationCode` (Builder's auto-linker already did that matching once); and the map got its own independent scroll-to-zoom/drag-to-pan (separate from the browser's page zoom, which can't be scoped to one element) plus a real visual design pass (header/search bar, card-style results, branded item card) pulled forward from Phase 8 after the first functional-but-plain pass didn't look presentable enough. `aislez-shopper/` is its own git repo (per the original "separate repo" plan), sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`.
+> **Implementation note (September 2026):** Built with real exported data from a founder test store (not a hand-made mock CSV), which immediately surfaced a real Phase 6 bug — the exporter didn't resolve color/abbrev for retailer-defined custom fixture types, only built-ins — fixed before Shopper work continued (see `ARCHITECTURE.md`). Also deviated from the original plan in a few ways, all founder-confirmed: `.jsx`/`.js` became `.tsx`/`.ts` for type-safety parity with Builder; the map also renders `walls`/`entrances` (added to the Phase 6 export) so it reads as a real store, not floating rectangles; result click looks up the fixture by the product's own `fixtureId` rather than re-matching `locationCode` (Builder's auto-linker already did that matching once); and the map got its own independent scroll-to-zoom/drag-to-pan (separate from the browser's page zoom, which can't be scoped to one element) plus a real visual design pass (header/search bar, card-style results, branded item card) pulled forward from Phase 8 after the first functional-but-plain pass didn't look presentable enough. `aislez-shopper/` is its own git repo (per the original "separate repo" plan), sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`. (Later merged into this repo as a sibling folder during Phase 9 — see that phase's implementation note for why.)
 
 ### Steps
 1. ✅ Create new React project (separate repo — Netlify deploy itself is Phase 8)
@@ -200,6 +200,8 @@
 
 **Goal:** The GitHub repo looks professional to an internship recruiter.
 
+> **Implementation note (October 2026):** Shopper was merged into this repo as a sibling folder to `aislez-builder/` (`chore: merge Shopper into this repo as a sibling folder`), replacing its old separate-repo setup. Reasoning: that separate repo had never actually been pushed to GitHub, so Shopper's source wasn't visible anywhere — only the live Netlify link worked. A recruiter cloning this repo now gets both apps' full source from one place, and the README's "run locally" instructions can cover both. The two apps still share zero code (no shared modules, hand-mirrored types) — only where the folders live changed, not how decoupled the codebases are. Shopper's own prior commit history (9 commits, never pushed) is preserved locally but dormant, not part of this repo's history.
+
 ### Steps
 1. Write README.md covering:
    - What the problem is (1 paragraph)
@@ -211,7 +213,7 @@
 2. Clean up all console.logs and debug code
 3. Ensure consistent code style throughout
 4. Write brief comments on non-obvious logic (location code generation, auto-linking)
-5. Add a LICENSE file (MIT)
+5. ✅ Add a LICENSE file (MIT) — already existed, predates this phase
 
 ---
 

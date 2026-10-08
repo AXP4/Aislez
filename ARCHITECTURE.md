@@ -27,7 +27,7 @@ Aislez has two independent applications that communicate through a single file f
 └─────────────────────────────────┘
 ```
 
-Both applications exist and run — Shopper lives in its own separate repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk but not part of this git history; see [Shopper Architecture](#shopper-architecture) below), consistent with the two connecting only through the exported JSON file, no shared code. See [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
+Both applications exist and run — Shopper lives in this same repo as a sibling folder (`aislez-shopper/`, next to `aislez-builder/`; see [Shopper Architecture](#shopper-architecture) below). It was merged in during Phase 9 — before that it was its own separate git repo that had never actually been pushed anywhere, which meant Shopper's source wasn't visible on GitHub at all. The two apps still share no code (connected only through the exported JSON file) — merging the repos changed where the folders live, not how disconnected the codebases are. See [What's Actually Built vs Planned](#whats-actually-built-vs-planned) below before trusting any section as current behavior.
 
 ---
 
@@ -304,7 +304,7 @@ Export (`utils/exporter.ts`'s `buildDataPackage`) is a genuinely separate transf
 
 ## Shopper Architecture
 
-A separate Vite + React + TypeScript project, in its own git repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`) — deliberately disconnected from Builder's codebase; the only thing joining them is the `datapackage.json` contract. Deployed to Netlify at https://aislez-shopper.netlify.app (a one-off `netlify-cli deploy --prod`, not yet wired to auto-deploy on push); also runs locally via `npm run dev`.
+A separate Vite + React + TypeScript project — `aislez-shopper/`, a sibling folder to `aislez-builder/` in this same repo (merged in during Phase 9) — deliberately disconnected from Builder at the code level; the only thing joining them is the `datapackage.json` contract. Deployed to Netlify at https://aislez-shopper.netlify.app (a one-off `netlify-cli deploy --prod`, not yet wired to auto-deploy on push); also runs locally via `npm run dev`.
 
 ### Folder Structure (current)
 ```
@@ -313,7 +313,7 @@ aislez-shopper/
 │   └── datapackage.json       # The bundled demo store, served when the start screen's "View Demo Store" is picked
 ├── src/
 │   ├── App.tsx                 # Root: header/search, results panel, map; renders StartScreen until a store is chosen
-│   ├── types.ts                 # Hand-mirrored copy of Builder's DataPackage shape — separate repos, no shared module
+│   ├── types.ts                 # Hand-mirrored copy of Builder's DataPackage shape — no shared module, kept in sync by hand
 │   ├── components/
 │   │   ├── StartScreen.tsx      # "View Demo Store" (fetches public/datapackage.json) or "Upload a Store File" (any exported datapackage.json, read client-side via File.text())
 │   │   ├── SearchBar.tsx        # Text input, magnifying-glass icon, clear (✕) button
