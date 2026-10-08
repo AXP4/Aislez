@@ -98,6 +98,25 @@ export default function PerimeterDrawLayer(): React.ReactElement {
 
   useEffect(() => () => updateGuides(null, null), [])
 
+  // Turning grid mode back on mid-sketch only snaps the free axis of the *next* segment
+  // going forward — the last corner you placed stays exactly where you clicked it while
+  // grid was off, and every subsequent segment has to stay connected to it, so that
+  // off-grid position otherwise keeps getting carried forward indefinitely. Snapping that
+  // last corner onto the grid the moment grid mode comes back on clears the drift immediately.
+  const prevGridModeRef = useRef(gridMode)
+  useEffect(() => {
+    const prevGridMode = prevGridModeRef.current
+    prevGridModeRef.current = gridMode
+    if (prevGridMode === 'off' && gridMode !== 'off' && points.length > 0) {
+      const sw = gridSizePx / ppu
+      const last = points[points.length - 1]
+      useUiStore.getState().replaceLastToolPoint({
+        x: Math.round(last.x / sw) * sw,
+        y: Math.round(last.y / sw) * sw
+      })
+    }
+  }, [gridMode])
+
   const finalize = useCallback((): void => {
     const pts = useUiStore.getState().toolPoints
     if (pts.length < 3) return

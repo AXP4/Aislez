@@ -32,6 +32,8 @@ interface UiStore {
   pushToolPoint: (p: ToolPoint) => void
   /** Undo the last placed point — shared by Backspace, Ctrl+Z, and the toolbar Undo button while a click-to-place tool is active */
   popToolPoint: () => void
+  /** Overwrites the last placed point in place — used to snap it onto the grid when grid mode turns back on mid-sketch */
+  replaceLastToolPoint: (p: ToolPoint) => void
   tooltip: TooltipState
   showTooltip: (text: string, x: number, y: number) => void
   hideTooltip: () => void
@@ -70,6 +72,9 @@ export const useUiStore = create<UiStore>((set, get) => ({
   toolPoints: [],
   pushToolPoint: (p) => set((s) => ({ toolPoints: [...s.toolPoints, p] })),
   popToolPoint: () => set((s) => ({ toolPoints: s.toolPoints.slice(0, -1) })),
+  replaceLastToolPoint: (p) => set((s) => (
+    s.toolPoints.length ? { toolPoints: [...s.toolPoints.slice(0, -1), p] } : s
+  )),
 
   tooltip: { visible: false, text: '', x: 0, y: 0 },
   showTooltip: (text, x, y) => set({ tooltip: { visible: true, text, x, y } }),
