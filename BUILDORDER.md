@@ -203,17 +203,19 @@
 > **Implementation note (October 2026):** Shopper was merged into this repo as a sibling folder to `aislez-builder/` (`chore: merge Shopper into this repo as a sibling folder`), replacing its old separate-repo setup. Reasoning: that separate repo had never actually been pushed to GitHub, so Shopper's source wasn't visible anywhere — only the live Netlify link worked. A recruiter cloning this repo now gets both apps' full source from one place, and the README's "run locally" instructions can cover both. The two apps still share zero code (no shared modules, hand-mirrored types) — only where the folders live changed, not how decoupled the codebases are. Shopper's own prior commit history (9 commits, never pushed) is preserved locally but dormant, not part of this repo's history.
 
 ### Steps
-1. Write README.md covering:
+1. ✅ Write README.md covering:
    - What the problem is (1 paragraph)
    - What Aislez does (1 paragraph)
    - Screenshots of Builder and Shopper
    - Tech stack
    - How to run locally (Builder and Shopper separately)
-   - Link to live Netlify demo
-2. Clean up all console.logs and debug code
-3. Ensure consistent code style throughout
-4. Write brief comments on non-obvious logic (location code generation, auto-linking)
+   - Link to live Netlify demo — also includes the demo video, and a GitHub Release with the Builder `.exe` attached (not in the original plan, added since the standalone landing page was dropped — see Phase 8)
+2. ✅ Clean up all console.logs and debug code — one legitimate `console.error` left in Electron's preload error handler, nothing else found
+3. ✅ Ensure consistent code style throughout — both apps lint clean (`oxlint`); removed several genuinely unused variables/imports it caught, and deleted `locationCode.ts` entirely (dead code left over from the de-scoped auto-location-code feature — zero call sites anywhere)
+4. ✅ Brief comments on non-obvious logic — `autoLinker.ts` and the Location Codes/chain system were already well-commented from when they were built; no gaps found
 5. ✅ Add a LICENSE file (MIT) — already existed, predates this phase
+
+**Phase 9 complete.** Repo is public: https://github.com/AXP4/Aislez
 
 ---
 
