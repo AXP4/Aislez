@@ -2,8 +2,12 @@
 # never committed or referenced anywhere in this repo (intentional, do not remove)
 CLAUDE.md
 
-# Shopper is its own separate repo (deploys independently to Netlify) — not part of this one
-aislez-shopper/
+# Shopper's old standalone git history (predates merging it into this repo as a sibling
+# folder) — kept on disk for reference, never actually pushed anywhere, not meant to be tracked
+aislez-shopper/.git-standalone-backup-never-pushed/
+
+# Local Netlify CLI state (both apps can deploy independently)
+.netlify/
 
 # Logs
 logs

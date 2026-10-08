@@ -1,0 +1,460 @@
+:root {
+  color-scheme: light;
+  font: 14px/1.4 -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #eef0f3;
+  color: #1a1a2e;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+
+.topbar {
+  flex-shrink: 0;
+  height: 68px;
+  background: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 28px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.topbar-back {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topbar-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.topbar-brand-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #4A90D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.search-wrap {
+  flex: 1;
+  max-width: 560px;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a8aa0;
+  pointer-events: none;
+}
+
+.search-bar {
+  width: 100%;
+  padding: 11px 38px 11px 42px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.search-bar:focus {
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.4);
+}
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: #8a8aa0;
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1a1a2e;
+}
+
+/* ── Onboarding hint ─────────────────────────────────────────────────── */
+
+.onboarding-hint {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 28px;
+  background: rgba(74, 144, 217, 0.1);
+  border-bottom: 1px solid rgba(74, 144, 217, 0.25);
+  font-size: 13px;
+  line-height: 1.4;
+  color: #1a1a2e;
+}
+
+.onboarding-hint strong {
+  color: #2d6fb0;
+}
+
+.onboarding-hint-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #8a8aa0;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.onboarding-hint-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #1a1a2e;
+}
+
+/* ── Body layout ─────────────────────────────────────────────────────── */
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.results-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e2e4e9;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.results-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #8a8aa0;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 40px;
+  line-height: 1.6;
+}
+
+.results-panel-empty svg {
+  color: #c7cbd4;
+}
+
+.results-count {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a8aa0;
+}
+
+.search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.result-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #ebedf1;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13.5px;
+  text-align: left;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.result-item:hover {
+  border-color: #c9d6e4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.result-item.selected {
+  border-color: #4A90D9;
+  background: rgba(74, 144, 217, 0.06);
+}
+
+.result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.result-price {
+  color: #27ae60;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── Item card ───────────────────────────────────────────────────────── */
+
+.item-card {
+  padding: 18px;
+  border-radius: 14px;
+  background: linear-gradient(165deg, #1a1a2e, #262645);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 8px 20px rgba(26, 26, 46, 0.25);
+}
+
+.item-card-name {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+}
+
+.item-card-price {
+  color: #6fd38c;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.item-card-field {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.item-card-location {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(74, 144, 217, 0.25);
+  color: #8fc3f0;
+  width: fit-content;
+}
+
+.item-card-missing {
+  background: rgba(230, 126, 34, 0.2);
+  color: #f0a860;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────── */
+
+.map-area {
+  flex: 1;
+  min-width: 0;
+  padding: 20px;
+}
+
+.map-canvas-frame {
+  width: 100%;
+  height: 100%;
+  /* background color is retailer-configurable (store.mapBackgroundColor), set inline in App.tsx */
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.status-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8a8aa0;
+  font-size: 14px;
+}
+
+/* ── Start screen ────────────────────────────────────────────────────── */
+
+.start-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background: #1a1a2e;
+  color: #fff;
+}
+
+.start-screen-icon {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.start-screen-title {
+  margin: 4px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.start-screen-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.start-screen-error {
+  margin: 8px 0 0;
+  color: #f0a860;
+  font-size: 13px;
+  max-width: 360px;
+}
+
+.start-screen-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.start-screen-button {
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.start-screen-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.start-screen-button.primary {
+  background: #4A90D9;
+  border-color: #4A90D9;
+}
+
+.start-screen-button.primary:hover {
+  background: #3f7fc1;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────
+   Below this width the side-by-side layout breaks down: a fixed 340px
+   results panel leaves almost nothing for the map on a phone screen. Stack
+   results above the map instead, each getting a capped share of the height
+   (both stay usable/scrollable rather than one crushing the other). */
+@media (max-width: 768px) {
+  .topbar {
+    height: 56px;
+    gap: 14px;
+    padding: 0 14px;
+  }
+
+  .topbar-brand-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .topbar-brand-name {
+    display: none; /* icon only — the search bar needs the room more than the wordmark does */
+  }
+
+  .topbar-back {
+    font-size: 0; /* collapse to just the arrow glyph, same room pressure as the wordmark above */
+    padding: 7px 10px;
+  }
+
+  .topbar-back::before {
+    content: '←';
+    font-size: 14px;
+  }
+
+  .onboarding-hint {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .body {
+    flex-direction: column;
+  }
+
+  .results-panel {
+    width: 100%;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid #e2e4e9;
+    padding: 12px;
+  }
+
+  .map-area {
+    padding: 10px;
+    min-height: 0;
+  }
+}

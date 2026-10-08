@@ -1,0 +1,389 @@
+{
+  "version": "1.0",
+  "store": {
+    "name": "Demo Store",
+    "unit": "meters",
+    "storeOutline": [
+      {
+        "x": 0,
+        "y": 0
+      },
+      {
+        "x": 19,
+        "y": 0
+      },
+      {
+        "x": 19,
+        "y": 10
+      },
+      {
+        "x": 3,
+        "y": 10
+      },
+      {
+        "x": 3,
+        "y": 6
+      },
+      {
+        "x": 0,
+        "y": 6
+      }
+    ],
+    "perimeterThickness": [
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2,
+      0.2
+    ],
+    "wallColor": "#2c3e50",
+    "mapBackgroundColor": "#1a1a2e"
+  },
+  "fixtures": [
+    {
+      "id": "fixture_1791433894403_1",
+      "type": "custom",
+      "label": "Shelf",
+      "locationCode": "B2-1",
+      "color": "#4A90D9",
+      "abbrev": "SH",
+      "x": 15,
+      "y": 1.2,
+      "width": 0.5,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433896184_2",
+      "type": "custom",
+      "label": "Shelf",
+      "locationCode": "B2-2",
+      "color": "#4A90D9",
+      "abbrev": "SH",
+      "x": 15,
+      "y": 2.4,
+      "width": 0.5,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433897004_3",
+      "type": "custom",
+      "label": "Shelf",
+      "locationCode": "B2-3",
+      "color": "#4A90D9",
+      "abbrev": "SH",
+      "x": 15,
+      "y": 3.6,
+      "width": 0.5,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433897679_4",
+      "type": "custom",
+      "label": "Shelf",
+      "locationCode": "B2-4",
+      "color": "#4A90D9",
+      "abbrev": "SH",
+      "x": 15,
+      "y": 4.8,
+      "width": 0.5,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433898400_5",
+      "type": "custom",
+      "label": "Shelf",
+      "locationCode": "B2-5",
+      "color": "#4A90D9",
+      "abbrev": "SH",
+      "x": 15,
+      "y": 6,
+      "width": 0.5,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433906447_6",
+      "type": "custom",
+      "label": "Table",
+      "locationCode": "B3-1",
+      "color": "#16A085",
+      "abbrev": "TB",
+      "x": 2,
+      "y": 1,
+      "width": 1.2,
+      "height": 0.6,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433907607_7",
+      "type": "custom",
+      "label": "Table",
+      "locationCode": "B3-2",
+      "color": "#16A085",
+      "abbrev": "TB",
+      "x": 3.2,
+      "y": 1,
+      "width": 1.2,
+      "height": 0.6,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433908499_8",
+      "type": "custom",
+      "label": "Table",
+      "locationCode": "B3-3",
+      "color": "#16A085",
+      "abbrev": "TB",
+      "x": 4.4,
+      "y": 1,
+      "width": 1.2,
+      "height": 0.6,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433909099_9",
+      "type": "custom",
+      "label": "Table",
+      "locationCode": "B3-4",
+      "color": "#16A085",
+      "abbrev": "TB",
+      "x": 5.6000000000000005,
+      "y": 1,
+      "width": 1.2,
+      "height": 0.6,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433909804_10",
+      "type": "custom",
+      "label": "Table",
+      "locationCode": "B3-5",
+      "color": "#16A085",
+      "abbrev": "TB",
+      "x": 6.800000000000001,
+      "y": 1,
+      "width": 1.2,
+      "height": 0.6,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433912574_11",
+      "type": "custom",
+      "label": "Pallet",
+      "locationCode": "C2-1",
+      "color": "#8E44AD",
+      "abbrev": "PL",
+      "x": 2,
+      "y": 4,
+      "width": 1,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433914075_12",
+      "type": "custom",
+      "label": "Pallet",
+      "locationCode": "C2-2",
+      "color": "#8E44AD",
+      "abbrev": "PL",
+      "x": 3,
+      "y": 4,
+      "width": 1,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433915008_13",
+      "type": "custom",
+      "label": "Pallet",
+      "locationCode": "C2-3",
+      "color": "#8E44AD",
+      "abbrev": "PL",
+      "x": 4,
+      "y": 4,
+      "width": 1,
+      "height": 1.2,
+      "rotation": 0
+    },
+    {
+      "id": "fixture_1791433915661_14",
+      "type": "custom",
+      "label": "Pallet",
+      "locationCode": "C2-4",
+      "color": "#8E44AD",
+      "abbrev": "PL",
+      "x": 5,
+      "y": 4,
+      "width": 1,
+      "height": 1.2,
+      "rotation": 0
+    }
+  ],
+  "walls": [],
+  "entrances": [
+    {
+      "id": "entrance_1791433944312_1",
+      "edgeIndex": 2,
+      "offset": 2.25,
+      "width": 2.7
+    }
+  ],
+  "products": [
+    {
+      "id": "product_1791433966171_1",
+      "itemName": "Whole Milk 2% Gallon",
+      "sku": "10001",
+      "price": 4.29,
+      "category": "Dairy",
+      "locationCode": "C1-1"
+    },
+    {
+      "id": "product_1791433966171_2",
+      "itemName": "Greek Yogurt Vanilla 32oz",
+      "sku": "10002",
+      "price": 5.49,
+      "category": "Dairy",
+      "locationCode": "C1-1"
+    },
+    {
+      "id": "product_1791433966171_3",
+      "itemName": "Orange Juice No Pulp 64oz",
+      "sku": "10003",
+      "price": 4.99,
+      "category": "Beverages",
+      "locationCode": "C1-1"
+    },
+    {
+      "id": "product_1791433966171_4",
+      "fixtureId": "fixture_1791433906447_6",
+      "itemName": "Vanilla Ice Cream 1.5qt",
+      "sku": "20001",
+      "price": 5.99,
+      "category": "Frozen",
+      "locationCode": "B3-1"
+    },
+    {
+      "id": "product_1791433966171_5",
+      "fixtureId": "fixture_1791433907607_7",
+      "itemName": "Margherita Frozen Pizza",
+      "sku": "20002",
+      "price": 6.49,
+      "category": "Frozen",
+      "locationCode": "B3-2"
+    },
+    {
+      "id": "product_1791433966171_6",
+      "fixtureId": "fixture_1791433908499_8",
+      "itemName": "Frozen Mixed Vegetables 12oz",
+      "sku": "20003",
+      "price": 2.49,
+      "category": "Frozen",
+      "locationCode": "B3-3"
+    },
+    {
+      "id": "product_1791433966171_7",
+      "fixtureId": "fixture_1791433894403_1",
+      "itemName": "Tomato Ketchup 32oz",
+      "sku": "30001",
+      "price": 3.49,
+      "category": "Condiments",
+      "locationCode": "B2-1"
+    },
+    {
+      "id": "product_1791433966171_8",
+      "fixtureId": "fixture_1791433894403_1",
+      "itemName": "Yellow Mustard 20oz",
+      "sku": "30002",
+      "price": 2.29,
+      "category": "Condiments",
+      "locationCode": "B2-1"
+    },
+    {
+      "id": "product_1791433966171_9",
+      "fixtureId": "fixture_1791433896184_2",
+      "itemName": "Elbow Macaroni Pasta 16oz",
+      "sku": "30003",
+      "price": 1.99,
+      "category": "Pasta & Grains",
+      "locationCode": "B2-2"
+    },
+    {
+      "id": "product_1791433966171_10",
+      "fixtureId": "fixture_1791433896184_2",
+      "itemName": "Long Grain White Rice 5lb",
+      "sku": "30004",
+      "price": 6.99,
+      "category": "Pasta & Grains",
+      "locationCode": "B2-2"
+    },
+    {
+      "id": "product_1791433966171_11",
+      "fixtureId": "fixture_1791433897004_3",
+      "itemName": "Honey Nut Cereal 18oz",
+      "sku": "30005",
+      "price": 4.79,
+      "category": "Breakfast",
+      "locationCode": "B2-3"
+    },
+    {
+      "id": "product_1791433966171_12",
+      "fixtureId": "fixture_1791433897004_3",
+      "itemName": "Classic Oatmeal 42oz",
+      "sku": "30006",
+      "price": 5.29,
+      "category": "Breakfast",
+      "locationCode": "B2-3"
+    },
+    {
+      "id": "product_1791433966171_13",
+      "fixtureId": "fixture_1791433897679_4",
+      "itemName": "Condensed Tomato Soup 10.5oz",
+      "sku": "30007",
+      "price": 1.59,
+      "category": "Canned Goods",
+      "locationCode": "B2-4"
+    },
+    {
+      "id": "product_1791433966171_14",
+      "fixtureId": "fixture_1791433897679_4",
+      "itemName": "Black Beans Canned 15oz",
+      "sku": "30008",
+      "price": 1.29,
+      "category": "Canned Goods",
+      "locationCode": "B2-4"
+    },
+    {
+      "id": "product_1791433966171_15",
+      "itemName": "Pumpkin Spice Cookies",
+      "sku": "40001",
+      "price": 3.99,
+      "category": "Seasonal"
+    },
+    {
+      "id": "product_1791433966171_16",
+      "itemName": "Reusable Shopping Tote Bag",
+      "sku": "40002",
+      "price": 2.99,
+      "category": "General Merchandise"
+    },
+    {
+      "id": "product_1791433966171_17",
+      "itemName": "Craft IPA 6-Pack",
+      "sku": "40003",
+      "price": 10.99,
+      "category": "Beverages"
+    },
+    {
+      "id": "product_1791433966171_18",
+      "itemName": "Assorted Birthday Candles",
+      "sku": "40004",
+      "price": 1.49,
+      "category": "Party Supplies"
+    }
+  ]
+}
