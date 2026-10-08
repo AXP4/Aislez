@@ -8,9 +8,9 @@ A retail in-store navigation platform — map a store once, let any shopper find
 
 ## Demo
 
-<video src="https://raw.githubusercontent.com/AXP4/Aislez/main/docs/builder-demo.mp4" controls width="100%"></video>
+[![Watch the demo](docs/screenshots/builder-fixtures.png)](https://raw.githubusercontent.com/AXP4/Aislez/main/docs/builder-demo.mp4)
 
-*Builder: sketching a store outline, placing and coding fixtures, importing a product CSV, and exporting the data package Shopper loads.*
+**[▶ Watch the demo (59s)](https://raw.githubusercontent.com/AXP4/Aislez/main/docs/builder-demo.mp4)** — sketching a store outline, placing and coding fixtures, importing a product CSV, and exporting the data package Shopper loads.
 
 **Try it yourself:**
 - 🔎 **[Shopper — live demo](https://aislez-shopper.netlify.app)** — opens straight in your browser, no install
