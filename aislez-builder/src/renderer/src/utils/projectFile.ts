@@ -2,6 +2,7 @@ import type { ProjectFile } from '../types'
 import { useCanvasStore } from '../store/canvasStore'
 import { useProjectStore } from '../store/projectStore'
 import { useProductStore } from '../store/productStore'
+import { useUiStore } from '../store/uiStore'
 
 export const PROJECT_FILE_VERSION = '1.0'
 
@@ -31,4 +32,7 @@ export function hydrateProject(file: ProjectFile): void {
   useProjectStore.getState().loadProject(file.settings, file.customFixtureTypes, file.wallDefaults)
   useCanvasStore.getState().loadCanvas(file.fixtures, file.walls, file.entrances)
   useProductStore.getState().importProducts(file.products ?? [], file.columnMap ?? {}, file.requiredFields ?? [])
+  // setActiveTool('select') also clears toolPoints — without this, a sketch or calibration left
+  // mid-click on the previous project was still sitting in uiStore and reappeared on this one's canvas.
+  useUiStore.getState().setActiveTool('select')
 }

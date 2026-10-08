@@ -6,6 +6,7 @@ import NewProjectDialog from './components/NewProjectDialog'
 import ProjectSettingsModal from './components/ProjectSettingsModal'
 import StartScreen from './components/StartScreen'
 import CSVImporter from './components/Import/CSVImporter'
+import ConfirmDialog from './components/ConfirmDialog'
 import { useUiStore } from './store/uiStore'
 import { useCanvasStore } from './store/canvasStore'
 import { useProjectStore } from './store/projectStore'
@@ -970,17 +971,28 @@ export default function App(): React.ReactElement {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showNewProject, setShowNewProject] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
 
   const handleExport = async (): Promise<void> => {
     const filePath = await exportDataPackage()
     if (filePath) window.alert(`Exported data package to:\n${filePath}`)
   }
 
-  const handleCloseProject = (): void => {
-    if (!window.confirm('Close this project? Any unsaved changes will be lost.')) return
+  // Asks via an in-page dialog, not window.confirm() — a native dialog can come back without
+  // real OS keyboard focus on Windows, leaving the next text input unable to accept new
+  // characters (Backspace still worked, but typing didn't) even though it looked focused.
+  const handleCloseProject = (): void => setShowCloseConfirm(true)
+
+  const confirmCloseProject = (): void => {
+    setShowCloseConfirm(false)
+    setShowNewProject(false)
     useCanvasStore.getState().loadCanvas([], [], [])
     useProductStore.getState().clearProducts()
     useProjectStore.getState().closeProject()
+    // setActiveTool('select') also clears toolPoints — without this, a sketch left
+    // mid-Draw (or a calibration left mid-click) was still sitting in uiStore and
+    // reappeared on the canvas of the next project created or opened.
+    useUiStore.getState().setActiveTool('select')
   }
 
   // Global keyboard shortcuts + Ctrl tracking for canvas panning
@@ -1058,6 +1070,15 @@ export default function App(): React.ReactElement {
       </div>
       {settingsOpen && <ProjectSettingsModal onClose={() => setSettingsOpen(false)} />}
       {showImport && <CSVImporter onClose={() => setShowImport(false)} />}
+      {showCloseConfirm && (
+        <ConfirmDialog
+          title="Close this project?"
+          message="Any unsaved changes will be lost."
+          confirmLabel="Close Project"
+          onConfirm={confirmCloseProject}
+          onCancel={() => setShowCloseConfirm(false)}
+        />
+      )}
     </div>
   )
 }
