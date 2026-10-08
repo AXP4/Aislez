@@ -198,7 +198,6 @@ aislez-builder/
 │           ├── chain.ts             # Chain traversal, code parsing, direction logic
 │           ├── chainState.ts        # Chain state helpers
 │           ├── geometry.ts          # Polygon/rect math: containment, outward offset, edge projection, wall↔perimeter/wall↔wall flush detection, self-intersection check
-│           ├── locationCode.ts      # Location code utilities
 │           ├── projectFile.ts       # serializeProject/hydrateProject — collect all store state (including products) into a ProjectFile, or replace store state with one
 │           ├── fileActions.ts       # saveProject/saveProjectAs/openProject/exportDataPackage — call the main process's file dialogs via IPC, wrap projectFile.ts/exporter.ts
 │           ├── exporter.ts          # buildDataPackage — pure transform: current store state → stripped-down, shopper-visible-only DataPackage
