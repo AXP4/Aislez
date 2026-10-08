@@ -180,19 +180,19 @@
 
 **Goal:** The Netlify demo is clean, impressive, and self-explanatory to a recruiter.
 
-> **Implementation note (October 2026):** A few things landed ahead of or outside this phase's original step order, all founder-confirmed. Builder was packaged as a standalone portable `.exe` via `electron-builder` (not in the original plan — the founder wanted Builder actually downloadable/runnable, not just shown via video; see `ARCHITECTURE.md`). Shopper's map background color became retailer-configurable from Builder's Project Settings (flows through the exporter), and the perimeter wall rendering was fixed from patchy per-edge strokes to one clean filled band — both bugs/gaps noticed while testing with the founder's real "Walmart Sage Hill" demo store. UI polish, the onboarding hint, and mobile responsiveness (steps 3-5) were done before the landing page and Netlify deploy (steps 1, 2, 6), since there was no live Shopper link yet to point a landing page at.
+> **Implementation note (October 2026):** A few things landed ahead of or outside this phase's original step order, all founder-confirmed. Builder was packaged as a standalone portable `.exe` via `electron-builder` (not in the original plan — the founder wanted Builder actually downloadable/runnable, not just shown via video; see `ARCHITECTURE.md`). Shopper's map background color became retailer-configurable from Builder's Project Settings (flows through the exporter), and the perimeter wall rendering was fixed from patchy per-edge strokes to one clean filled band — both bugs/gaps noticed while testing with the founder's real "Walmart Sage Hill" demo store (since renamed "Sage Hill Grocery Store" for the public demo, to avoid using Walmart's name/trademark). UI polish, the onboarding hint, and mobile responsiveness (steps 3-5) were done before Netlify deploy (step 6), since there was no live Shopper link yet to test against.
+>
+> **Steps 1-2 (the standalone landing page) were dropped, founder-confirmed.** Reasoning: anyone clicking in from a resume/LinkedIn lands on the GitHub repo either way, so the README *is* the first impression — a separate landing page would just be redundant work for the same outcome. The landing page's content (demo video, live Shopper link, brief explanation) moves into Phase 9's README instead.
 
 ### Steps
-1. Build a landing page with two clear buttons: "Store Builder Demo" and "Shopper Demo"
-   - Builder Demo: short video or GIF showing Builder in action (screen recording)
-   - Shopper Demo: links to the live Shopper browser app
-2. Add a brief explanation on the landing page (2-3 sentences max, no jargon)
+1. ~~Build a landing page with two clear buttons~~ — dropped, folded into Phase 9's README (see note above)
+2. ~~Add a brief explanation on the landing page~~ — dropped, folded into Phase 9's README
 3. ✅ Polish Shopper UI — clean typography, clear map, obvious search bar
 4. ✅ Add a "How to use" tooltip or onboarding hint in Shopper (first time only)
 5. ✅ Ensure Shopper works on mobile screen sizes
-6. Deploy to Netlify
+6. ✅ Deploy to Netlify — live at https://aislez-shopper.netlify.app (one-off CLI deploy, not yet connected to the repo for auto-deploy on push)
 
-**Test:** Send the Netlify link to someone unfamiliar with the project. They should understand what it does and be able to find a product within 30 seconds.
+**Phase 8 complete.** Next: Phase 9 (GitHub Repo Polish), starting with the README.
 
 ---
 
