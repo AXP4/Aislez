@@ -63,7 +63,7 @@ function clampZoom(z: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
 }
 
-export const useUiStore = create<UiStore>((set, get) => ({
+export const useUiStore = create<UiStore>((set) => ({
   gridMode: 'dots',
   activeTool: 'select',
   cycleGridMode: () => set((s) => ({ gridMode: CYCLE[s.gridMode] })),

@@ -32,8 +32,8 @@ export default function StoreCanvas(): React.ReactElement {
   const didRubberBand   = useRef(false)
   const [stageSize, setStageSize] = useState<StageSize>({ width: 800, height: 600 })
 
-  const { addFixture, addWall, addEntrance, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, selectedWallId, deleteWall } = useCanvasStore()
-  const { gridMode, tooltip, zoom, panX, panY, activeTool, setViewport, setStageSize: setUiStageSize } = useUiStore()
+  const { addFixture, addWall, addEntrance, deselectAll, deleteFixture, deleteChain, deleteMulti, duplicateSelected, setMultiSelected, selectFixture: storeSelectFixture, selectedFixtureId, selectedChainAnchor, deleteWall } = useCanvasStore()
+  const { gridMode, tooltip, zoom, panX, panY, activeTool, setStageSize: setUiStageSize } = useUiStore()
   const { settings, pixelsPerUnit, gridSizePx, wallDefaults } = useProjectStore()
 
   // Fill available space (minus rulers), propagate to uiStore for fit-to-store

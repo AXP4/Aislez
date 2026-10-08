@@ -1,8 +1,6 @@
 import React from 'react'
 import { Layer, Shape } from 'react-konva'
 import type Konva from 'konva'
-import { useCanvasStore } from '../../store/canvasStore'
-import { useProjectStore } from '../../store/projectStore'
 import type { Direction } from '../../utils/chain'
 import type { Fixture } from '../../types'
 

@@ -377,7 +377,7 @@ function FixtureShape({
 }: FixtureShapeProps): React.ReactElement {
   const { moveFixture, detachAndMove, selectFixture, selectChain, extendChain, rejoinChain, rejoinBoth, toggleMultiSelect, addToMultiSelected, moveMulti } = useCanvasStore()
   const { pixelsPerUnit, gridSizePx, formatUnitShort, customFixtureTypes } = useProjectStore()
-  const { gridMode, ctrlHeld, showTooltip, hideTooltip } = useUiStore()
+  const { gridMode, showTooltip, hideTooltip } = useUiStore()
 
   const isHighlighted = isSelected || isChainSelected
 
@@ -663,7 +663,7 @@ function FixtureShape({
 function ChainGroup({ duplicateCodes, multiSet }: { duplicateCodes: Set<string>; multiSet: Set<string> }): React.ReactElement | null {
   const { fixtures, selectedChainAnchor, moveChain, extendChain, linkChains } = useCanvasStore()
   const { pixelsPerUnit, gridSizePx } = useProjectStore()
-  const { gridMode, ctrlHeld } = useUiStore()
+  const { gridMode } = useUiStore()
 
   if (!selectedChainAnchor) return null
 
