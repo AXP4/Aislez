@@ -52,8 +52,11 @@ Both applications exist and run — Shopper lives in its own separate repo (`ais
 | CSV import + column mapping + auto-linking + Relink | ✅ Built |
 | Product list sidebar (highlight-on-click, detail editor, per-field settings) | ✅ Built |
 | Export JSON data package (fixtures, walls, entrances, shopper-visible product fields) | ✅ Built |
-| Shopper app — map, search, highlight-on-select, independent map zoom/pan | ✅ Built |
-| Shopper deployed to Netlify, demo landing page | ⬜ Planned (Phase 8) |
+| Shopper app — map, search, highlight-on-select, independent map zoom/pan, touch pan/pinch-zoom | ✅ Built |
+| Shopper start screen (view bundled demo store, or upload any exported `datapackage.json`) | ✅ Built |
+| Shopper deployed to Netlify | ✅ Built — https://aislez-shopper.netlify.app |
+| Builder packaged as a standalone portable `.exe` (electron-builder) | ✅ Built |
+| Standalone landing page | ❌ Dropped (Phase 8) — anyone following a resume/portfolio link lands on the GitHub repo either way, so the README covers the same "explain it fast" job; no separate page needed |
 
 The rest of this document describes the built parts as they actually work, and the planned parts as design intent (clearly marked). See [BUILDORDER.md](BUILDORDER.md) for phase-by-phase sequencing.
 
@@ -149,6 +152,7 @@ Files marked `[planned]` are not yet implemented.
 aislez-builder/
 ├── scripts/
 │   └── dev.js                       # Clears ELECTRON_RUN_AS_NODE before launch
+├── electron-builder.yml             # Portable Windows .exe packaging config (`npm run dist:win`) — no installer, no admin rights needed
 ├── src/
 │   ├── main/
 │   │   └── index.ts                 # Electron main process, window, native menu (Undo/Redo/Delete/Save/Open/Export via IPC), project:save/project:open/export:save file dialogs
@@ -180,6 +184,7 @@ aislez-builder/
 │       │   ├── StartScreen.tsx            # Launch screen when no project is open: "New Project" or "Open Project"
 │       │   ├── NewProjectDialog.tsx       # New project setup: name, unit, rectangle/custom shape, grid snap
 │       │   ├── ProjectSettingsModal.tsx   # Edit project settings at any time
+│       │   ├── ConfirmDialog.tsx          # In-page Close Project confirmation — not window.confirm(), see Key Logic below
 │       │   └── Import/
 │       │       ├── CSVImporter.tsx    # Modal orchestrator: upload → map columns → summary
 │       │       ├── ColumnMapper.tsx   # Per CSV column: target field (standard or custom-named), Required, Shopper-visible; live preview table
@@ -246,6 +251,10 @@ A photo (`BackgroundImage` in `projectStore`, base64 + world-unit x/y/width/heig
 **Click-to-place tools (Draw, Calibrate) share one points buffer; the background photo has its own separate undo history**
 `uiStore`'s `toolPoints`/`pushToolPoint`/`popToolPoint` are generic — not owned by `PerimeterDrawLayer.tsx` or `CalibrateLayer.tsx` specifically — so a corner placed while sketching the outline and a reference point placed while calibrating the background photo are the same kind of state. `setActiveTool` always clears `toolPoints`, so entering or leaving any click-to-place tool always starts clean. Each layer still owns its own `Backspace`-pops-last-point keydown listener locally. Separately, moving (drag-end), resizing (corner drag-end), and calibrating the background photo are undoable too, via `projectStore`'s own `pastBackground`/`futureBackground`/`undoBackground`/`redoBackground` — a second, independent history alongside canvasStore's fixture/wall/entrance one, since the image lives in `projectStore` and isn't a canvas object. `updateBackgroundImageWithHistory` (used by `BackgroundLayer.tsx`'s drag/resize-end handlers and `CalibrateLayer.tsx`'s `applyCalibration`) snapshots the pre-change `BackgroundImage` before applying an update; plain `updateBackgroundImage` (used by the opacity slider) does not, so dragging that slider doesn't flood the history with one entry per tick. `App.tsx`'s `performUndo`/`performRedo` are the single place all three tiers get resolved — toolPoints first, then background history, then canvasStore — shared by the toolbar buttons, Ctrl+Z/Ctrl+Y, and the Electron Edit-menu actions so the three never drift out of sync with each other. These are separate stacks, not one merged chronological timeline: Undo resolves to whichever tier is active/non-empty, not strictly "the single most recent action across all of them."
 
+**Closing a project fully resets `uiStore`, not just the three data stores** — `closeProject`/`hydrateProject` (open-file path) both clear `canvasStore`/`productStore`/`projectStore`, but a real bug shipped where they left `uiStore`'s `activeTool`/`toolPoints` untouched: a sketch left mid-Draw (or a calibration left mid-click) was still sitting there and reappeared on whichever project came next, Rectangle or Custom shape alike. Both paths now also call `setActiveTool('select')`, which — via its own existing `toolPoints: []` reset — clears it. Related: Close Project's confirmation is `ConfirmDialog.tsx`, an in-page component, not `window.confirm()` — the native dialog could leave the Electron window without real OS keyboard focus afterward on Windows (Backspace/Delete still worked on the next text input since those are raw key actions, but typing new characters silently did nothing, and the caret never blinked). An in-page dialog never touches the OS, so it can't cause that.
+
+**Grid-mode toggle snaps the in-progress sketch's last corner, not just future ones** — `PerimeterDrawLayer.tsx`'s perpendicular-snap preview locks one axis to the previous corner's exact position (needed so segments actually connect) and only rounds the other, moving axis to the grid. If that previous corner was placed while grid mode was off (free, sub-centimeter precision), its exact fractional position kept propagating forward as the locked axis for however many segments followed, even after grid mode came back on. A `gridMode`-change effect now snaps the last placed corner onto the grid the moment it flips from `off` back to `dots`/`lines` (`replaceLastToolPoint` in `uiStore.ts`), clearing the drift immediately instead of leaving it to self-correct (or not) a segment or two later.
+
 **Location Codes (manual, not auto-generated from position)**
 Auto-deriving a code from canvas X/Y was tried and de-scoped — retailers already have their own aisle/bay numbering, so pixel-position-based codes would conflict with real-world layouts. Instead:
 1. Retailer selects a fixture or chain, types a prefix (e.g. `B3`) into the toolbar's **Code** field, and a starting section number into the **#** field (defaults to 1)
@@ -295,25 +304,28 @@ Export (`utils/exporter.ts`'s `buildDataPackage`) is a genuinely separate transf
 
 ## Shopper Architecture
 
-A separate Vite + React + TypeScript project, in its own git repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`) — deliberately disconnected from Builder's codebase; the only thing joining them is the `datapackage.json` contract. Not yet deployed (Netlify deploy + landing page is Phase 8); runs today via `npm run dev`.
+A separate Vite + React + TypeScript project, in its own git repo (`aislez-shopper/`, sibling to `aislez-builder/` on disk, excluded from this repo via `.gitignore`) — deliberately disconnected from Builder's codebase; the only thing joining them is the `datapackage.json` contract. Deployed to Netlify at https://aislez-shopper.netlify.app (a one-off `netlify-cli deploy --prod`, not yet wired to auto-deploy on push); also runs locally via `npm run dev`.
 
 ### Folder Structure (current)
 ```
 aislez-shopper/
 ├── public/
-│   └── datapackage.json       # Static asset for local dev — the real deploy fetches whatever file is placed here (or wherever Builder's export lands)
+│   └── datapackage.json       # The bundled demo store, served when the start screen's "View Demo Store" is picked
 ├── src/
-│   ├── App.tsx                 # Root: header/search, results panel, map
+│   ├── App.tsx                 # Root: header/search, results panel, map; renders StartScreen until a store is chosen
 │   ├── types.ts                 # Hand-mirrored copy of Builder's DataPackage shape — separate repos, no shared module
 │   ├── components/
-│   │   ├── SearchBar.tsx        # Text input with a magnifying-glass icon
+│   │   ├── StartScreen.tsx      # "View Demo Store" (fetches public/datapackage.json) or "Upload a Store File" (any exported datapackage.json, read client-side via File.text())
+│   │   ├── SearchBar.tsx        # Text input, magnifying-glass icon, clear (✕) button
 │   │   ├── SearchResults.tsx    # Matching products; empty/no-match states
-│   │   ├── ItemCard.tsx         # Selected product: name, price, custom fields, location badge
-│   │   └── StoreMap.tsx         # Canvas 2D map: outline/walls/entrances/fixtures, independent zoom/pan, blink-then-highlight
+│   │   ├── ItemCard.tsx         # Selected product: name, price, custom fields (humanized key labels), location badge
+│   │   ├── OnboardingHint.tsx   # First-time dismissible banner (localStorage-persisted), auto-dismisses on first search
+│   │   └── StoreMap.tsx         # Canvas 2D map: outline/walls/entrances/fixtures, independent zoom/pan (mouse + touch), blink-then-highlight
 │   ├── hooks/
-│   │   └── useDataPackage.ts    # fetch('/datapackage.json') once on mount
+│   │   └── useDataPackage.ts    # No auto-fetch — exposes loadDemo()/loadFile(file)/reset(), driven by StartScreen and the header's "← Change Store" button
 │   └── utils/
-│       └── search.ts            # Filter by itemName/category, case-insensitive partial match
+│       ├── search.ts            # Filter by itemName/category, case-insensitive partial match
+│       └── geometry.ts          # Ported from Builder's geometry.ts (offsetRectilinearPolygonOutward etc.) — enables the same filled-ring perimeter rendering, see Map Rendering below
 ├── index.html
 ├── vite.config.ts
 └── package.json
@@ -321,7 +333,7 @@ aislez-shopper/
 
 ### Data Flow
 ```
-Load datapackage.json (fetch, on mount)
+StartScreen: "View Demo Store" (fetch public/datapackage.json) or "Upload a Store File" (File.text() + JSON.parse)
         ↓
 User types in the search bar
         ↓
@@ -341,9 +353,9 @@ ItemCard shows name, price, any other shopper-visible fields, and the location
 ```
 
 ### Map Rendering
-Plain Canvas 2D — no Konva, no library; read-only, so none of Builder's drag machinery is needed. `StoreMap.tsx` fits the `storeOutline` polygon to its container, strokes the perimeter in `store.wallColor` while skipping any stretch covered by an `Entrance` (computed as gaps per edge, not a separate shape), fills interior `walls` as solid rects, and draws each fixture as a rect in its own baked-in `color` with its `locationCode` (falling back to `abbrev`) as a label. Fixture/wall `rotation` is always `0` in practice (Builder's rotate actions swap width/height instead of a real transform), so Shopper never handles rotated rects.
+Plain Canvas 2D — no Konva, no library; read-only, so none of Builder's drag machinery is needed. `StoreMap.tsx` fits the `storeOutline` polygon to its container and renders the perimeter as **one filled ring** (outer polygon forward + the outward-offset polygon reversed, opposite winding under the canvas's nonzero fill rule turns the inner one into a hole) — not per-edge `ctx.stroke()` calls, which left a visible seam/gap at every corner on an irregular hand-traced outline. `src/utils/geometry.ts` is ported from Builder's own `geometry.ts` (`offsetRectilinearPolygonOutward` etc.) specifically to make this possible. Entrance openings are punched through that band as filled quads in a dedicated red (`ENTRANCE_COLOR`), not the floor color — floor-colored entrances were originally meant to read as a visible gap in the wall, but on Shopper's near-white floor they were effectively invisible. Interior `walls` render as solid rects, and each fixture as a rect in its own baked-in `color` with its `locationCode` (falling back to `abbrev`) as a label; the highlighted fixture's border is drawn *last*, after every other fixture, so a neighbor's fill can't paint over part of it. Fixture/wall `rotation` is always `0` in practice (Builder's rotate actions swap width/height instead of a real transform), so Shopper never handles rotated rects.
 
-The map also has its own independent **scroll-to-zoom (centered on cursor) and drag-to-pan**, separate from the browser's page zoom — a page can't scope native browser zoom to one element, and relying on it would zoom the header/search bar too, which is the wrong UX. A small "Reset view" button appears once zoomed/panned away from the fitted default. This mirrors Builder's own canvas zoom/pan pattern, independently re-implemented since the two apps share no code.
+The map also has its own independent **scroll-to-zoom (centered on cursor) and drag-to-pan**, plus touch equivalents (one-finger pan, two-finger pinch-zoom, mirroring the mouse math exactly) — separate from the browser's page zoom, since a page can't scope native browser zoom to one element and relying on it would zoom the header/search bar too. A small "Reset view" button appears once zoomed/panned away from the fitted default. This mirrors Builder's own canvas zoom/pan pattern, independently re-implemented since the two apps share no code.
 
 ### Why fixtureId, not a locationCode re-match
 The original design sketch (pre-Phase-5) had Shopper re-deriving the fixture by matching `product.locationCode` against each fixture's own code at search time. Once Phase 5 added `autoLinker.ts`'s `fixtureId` directly onto each product, that became unnecessary — Builder has already done the matching once, correctly, and `fixtureId` ships straight through the export. Shopper just looks it up; it never needs to know what a location code even is.
@@ -378,20 +390,12 @@ LOCATION_CODE → locationCode
 
 ---
 
-## What Connects Builder to Shopper in the Demo (planned)
+## What Connects Builder to Shopper
 
-For the Netlify demo:
-1. Founder builds mock store in Builder, exports datapackage.json
-2. datapackage.json is committed to the Shopper repo as a static file
-3. Shopper loads it on startup
-4. No server needed — fully static
+For the Netlify demo (built): the founder's real demo store (traced from an actual Walmart blueprint, generic-named "Sage Hill Grocery Store" rather than using Walmart's own name/trademark) is exported from Builder and placed at `aislez-shopper/public/datapackage.json` — but deliberately **never committed**, since it's real-looking data the founder doesn't want sitting in git history. It only exists locally and in the already-deployed Netlify build. Shopper's start screen offers "View Demo Store" (fetches that bundled file) or "Upload a Store File" (any `datapackage.json` a visitor drops in, read entirely client-side) — so the live demo works correctly without the data file needing to be in the repo at all, and as a side effect, anyone can test the real Builder→Shopper pipeline against their own export too, not just the founder's.
 
-For the real product:
-1. Retailer exports datapackage.json from Builder
-2. Saves it to their own server
-3. Shopper (SDK/app/kiosk) fetches it from their server
-4. No Aislez servers involved
+For the real product (unchanged from the original plan): a retailer exports `datapackage.json` from Builder, saves it to their own server, and their Shopper instance (SDK/app/kiosk) fetches it from there — no Aislez servers involved either way.
 
 ---
 
-*Last updated: September 2026*
+*Last updated: October 2026*
